@@ -4,6 +4,7 @@ import asyncio
 import json
 import re
 import threading
+import time
 from collections import OrderedDict
 from typing import Any
 
@@ -102,7 +103,7 @@ class FeishuChannel(BaseChannel):
             event_handler=event_handler,
             log_level=lark.LogLevel.INFO,
         )
-        
+
         # Start WebSocket client in a separate thread with reconnect loop
         def run_ws():
             while self._running:
@@ -111,8 +112,8 @@ class FeishuChannel(BaseChannel):
                 except Exception as e:
                     logger.warning(f"Feishu WebSocket error: {e}")
                 if self._running:
-                    import time; time.sleep(5)
-        
+                    time.sleep(5)
+
         self._ws_thread = threading.Thread(target=run_ws, daemon=True)
         self._ws_thread.start()
 

@@ -76,7 +76,7 @@ class CronTool(Tool):
         elif action == "remove":
             return self._remove_job(job_id)
         return f"Unknown action: {action}"
-    
+
     def _add_job(self, message: str, every_seconds: int | None, cron_expr: str | None, at: str | None) -> str:
         if not message:
             return "Error: message is required for add"
@@ -97,7 +97,7 @@ class CronTool(Tool):
             delete_after = True
         else:
             return "Error: either every_seconds, cron_expr, or at is required"
-        
+
         job = self._cron.add_job(
             name=message[:30],
             schedule=schedule,
