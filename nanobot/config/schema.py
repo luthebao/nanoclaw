@@ -296,6 +296,9 @@ class Config(BaseSettings):
     gateway: GatewayConfig = Field(default_factory=GatewayConfig)
     heartbeat: HeartbeatConfig = Field(default_factory=HeartbeatConfig)
     tools: ToolsConfig = Field(default_factory=ToolsConfig)
+    mcp_servers: dict[str, MCPServerConfig] = Field(
+        default_factory=dict, alias="mcpServers"
+    )
 
     @property
     def workspace_path(self) -> Path:
@@ -354,4 +357,6 @@ class Config(BaseSettings):
                 return spec.default_api_base
         return None
 
-    model_config = SettingsConfigDict(env_prefix="NANOBOT_", env_nested_delimiter="__")
+    model_config = SettingsConfigDict(
+        env_prefix="NANOBOT_", env_nested_delimiter="__", populate_by_name=True
+    )
