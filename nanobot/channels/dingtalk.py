@@ -73,7 +73,9 @@ class NanobotDingTalkHandler(CallbackHandler):  # type: ignore[misc]
 
             # Forward to Nanobot via _on_message (non-blocking).
             # Store reference to prevent GC before task completes.
-            task = asyncio.create_task(self.channel._on_message(content, sender_id or "", sender_name))
+            task = asyncio.create_task(
+                self.channel._on_message(content, sender_id or "", sender_name)
+            )
             self.channel._background_tasks.add(task)
             task.add_done_callback(self.channel._background_tasks.discard)
 

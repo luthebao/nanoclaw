@@ -49,12 +49,9 @@ class CronTool(Tool):
                 },
                 "at": {
                     "type": "string",
-                    "description": "ISO datetime for one-time execution (e.g. '2026-02-12T10:30:00')"
+                    "description": "ISO datetime for one-time execution (e.g. '2026-02-12T10:30:00')",
                 },
-                "job_id": {
-                    "type": "string",
-                    "description": "Job ID (for remove)"
-                }
+                "job_id": {"type": "string", "description": "Job ID (for remove)"},
             },
             "required": ["action"],
         }
@@ -77,7 +74,9 @@ class CronTool(Tool):
             return self._remove_job(job_id)
         return f"Unknown action: {action}"
 
-    def _add_job(self, message: str, every_seconds: int | None, cron_expr: str | None, at: str | None) -> str:
+    def _add_job(
+        self, message: str, every_seconds: int | None, cron_expr: str | None, at: str | None
+    ) -> str:
         if not message:
             return "Error: message is required for add"
         if not self._channel or not self._chat_id:
@@ -91,6 +90,7 @@ class CronTool(Tool):
             schedule = CronSchedule(kind="cron", expr=cron_expr)
         elif at:
             from datetime import datetime
+
             dt = datetime.fromisoformat(at)
             at_ms = int(dt.timestamp() * 1000)
             schedule = CronSchedule(kind="at", at_ms=at_ms)

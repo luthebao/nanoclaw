@@ -151,9 +151,7 @@ When remembering something, write to {workspace_path}/memory/MEMORY.md"""
         # System prompt
         system_prompt = self.build_system_prompt(skill_names)
         if channel and chat_id:
-            system_prompt += (
-                f"\n\n## Current Session\nChannel: {channel}\nChat ID: {chat_id}"
-            )
+            system_prompt += f"\n\n## Current Session\nChannel: {channel}\nChat ID: {chat_id}"
         messages.append({"role": "system", "content": system_prompt})
 
         # History
@@ -165,9 +163,7 @@ When remembering something, write to {workspace_path}/memory/MEMORY.md"""
 
         return messages
 
-    def _build_user_content(
-        self, text: str, media: list[str] | None
-    ) -> str | list[dict[str, Any]]:
+    def _build_user_content(self, text: str, media: list[str] | None) -> str | list[dict[str, Any]]:
         """Build user message content with optional base64-encoded images."""
         if not media:
             return text
@@ -179,9 +175,7 @@ When remembering something, write to {workspace_path}/memory/MEMORY.md"""
             if not p.is_file() or not mime or not mime.startswith("image/"):
                 continue
             b64 = base64.b64encode(p.read_bytes()).decode()
-            images.append(
-                {"type": "image_url", "image_url": {"url": f"data:{mime};base64,{b64}"}}
-            )
+            images.append({"type": "image_url", "image_url": {"url": f"data:{mime};base64,{b64}"}})
 
         if not images:
             return text

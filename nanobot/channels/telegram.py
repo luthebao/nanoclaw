@@ -158,15 +158,10 @@ class TelegramChannel(BaseChannel):
             read_timeout=30.0,
         )
         builder = (
-            Application.builder()
-            .token(self.config.token)
-            .request(req)
-            .get_updates_request(req)
+            Application.builder().token(self.config.token).request(req).get_updates_request(req)
         )
         if self.config.proxy:
-            builder = builder.proxy(self.config.proxy).get_updates_proxy(
-                self.config.proxy
-            )
+            builder = builder.proxy(self.config.proxy).get_updates_proxy(self.config.proxy)
         self._app = builder.build()
         self._app.add_error_handler(self._on_error)
 
@@ -247,30 +242,20 @@ class TelegramChannel(BaseChannel):
             chat_id = int(msg.chat_id)
             # Convert markdown to Telegram HTML
             html_content = _markdown_to_telegram_html(msg.content)
-            await self._app.bot.send_message(
-                chat_id=chat_id, text=html_content, parse_mode="HTML"
-            )
-            await self._app.bot.send_message(
-                chat_id=chat_id, text=html_content, parse_mode="HTML"
-            )
+            await self._app.bot.send_message(chat_id=chat_id, text=html_content, parse_mode="HTML")
+            await self._app.bot.send_message(chat_id=chat_id, text=html_content, parse_mode="HTML")
         except ValueError:
             logger.error(f"Invalid chat_id: {msg.chat_id}")
         except Exception as e:
             # Fallback to plain text if HTML parsing fails
             logger.warning(f"HTML parse failed, falling back to plain text: {e}")
             try:
-                await self._app.bot.send_message(
-                    chat_id=int(msg.chat_id), text=msg.content
-                )
-                await self._app.bot.send_message(
-                    chat_id=int(msg.chat_id), text=msg.content
-                )
+                await self._app.bot.send_message(chat_id=int(msg.chat_id), text=msg.content)
+                await self._app.bot.send_message(chat_id=int(msg.chat_id), text=msg.content)
             except Exception as e2:
                 logger.error(f"Error sending Telegram message: {e2}")
 
-    async def _on_start(
-        self, update: Update, context: ContextTypes.DEFAULT_TYPE
-    ) -> None:
+    async def _on_start(self, update: Update, context: ContextTypes.DEFAULT_TYPE) -> None:
         """Handle /start command."""
         if not update.message or not update.effective_user:
             return
@@ -282,9 +267,7 @@ class TelegramChannel(BaseChannel):
             "Type /help to see available commands."
         )
 
-    async def _on_reset(
-        self, update: Update, context: ContextTypes.DEFAULT_TYPE
-    ) -> None:
+    async def _on_reset(self, update: Update, context: ContextTypes.DEFAULT_TYPE) -> None:
         """Handle /reset command — clear conversation history."""
         if not update.message or not update.effective_user:
             return
@@ -303,13 +286,9 @@ class TelegramChannel(BaseChannel):
         self.session_manager.save(session)
 
         logger.info(f"Session reset for {session_key} (cleared {msg_count} messages)")
-        await update.message.reply_text(
-            "🔄 Conversation history cleared. Let's start fresh!"
-        )
+        await update.message.reply_text("🔄 Conversation history cleared. Let's start fresh!")
 
-    async def _on_help(
-        self, update: Update, context: ContextTypes.DEFAULT_TYPE
-    ) -> None:
+    async def _on_help(self, update: Update, context: ContextTypes.DEFAULT_TYPE) -> None:
         """Handle /help command — show available commands."""
         if not update.message:
             return
@@ -323,9 +302,7 @@ class TelegramChannel(BaseChannel):
         )
         await update.message.reply_text(help_text, parse_mode="HTML")
 
-    async def _on_message(
-        self, update: Update, context: ContextTypes.DEFAULT_TYPE
-    ) -> None:
+    async def _on_message(self, update: Update, context: ContextTypes.DEFAULT_TYPE) -> None:
         """Handle incoming messages (text, photos, voice, documents)."""
         if not update.message or not update.effective_user:
             return
@@ -373,13 +350,9 @@ class TelegramChannel(BaseChannel):
         if media_file and media_type and self._app:
             try:
                 file = await self._app.bot.get_file(media_file.file_id)
-                ext = self._get_extension(
-                    media_type, getattr(media_file, "mime_type", None)
-                )
+                ext = self._get_extension(media_type, getattr(media_file, "mime_type", None))
 
-                ext = self._get_extension(
-                    media_type, getattr(media_file, "mime_type", None)
-                )
+                ext = self._get_extension(media_type, getattr(media_file, "mime_type", None))
 
                 # Save to workspace/media/
                 from pathlib import Path
@@ -401,9 +374,7 @@ class TelegramChannel(BaseChannel):
                     transcriber = GroqTranscriptionProvider(api_key=self.groq_api_key)
                     transcription = await transcriber.transcribe(file_path)
                     if transcription:
-                        logger.info(
-                            f"Transcribed {media_type}: {transcription[:50]}..."
-                        )
+                        logger.info(f"Transcribed {media_type}: {transcription[:50]}...")
                         content_parts.append(f"[transcription: {transcription}]")
                     else:
                         content_parts.append(f"[{media_type}: {file_path}]")
@@ -455,18 +426,14 @@ class TelegramChannel(BaseChannel):
         """Repeatedly send 'typing' action until cancelled."""
         try:
             while self._app:
-                await self._app.bot.send_chat_action(
-                    chat_id=int(chat_id), action="typing"
-                )
+                await self._app.bot.send_chat_action(chat_id=int(chat_id), action="typing")
                 await asyncio.sleep(4)
         except asyncio.CancelledError:
             pass
         except Exception as e:
             logger.debug(f"Typing indicator stopped for {chat_id}: {e}")
 
-    async def _on_error(
-        self, update: object, context: ContextTypes.DEFAULT_TYPE
-    ) -> None:
+    async def _on_error(self, update: object, context: ContextTypes.DEFAULT_TYPE) -> None:
         """Log polling / handler errors instead of silently swallowing them."""
         logger.error(f"Telegram error: {context.error}")
 

@@ -182,9 +182,7 @@ class AgentLoop:
         self._running = False
         logger.info("Agent loop stopping")
 
-    async def _maybe_compact(
-        self, messages: list[dict], prompt_tokens: int
-    ) -> list[dict]:
+    async def _maybe_compact(self, messages: list[dict], prompt_tokens: int) -> list[dict]:
         """Summarize older messages when approaching context window limit."""
         from nanobot.agent.compaction import (
             apply_compaction,
@@ -193,9 +191,7 @@ class AgentLoop:
             select_messages_to_compact,
         )
 
-        if not needs_compaction(
-            prompt_tokens, self.context_window, self.compaction_threshold
-        ):
+        if not needs_compaction(prompt_tokens, self.context_window, self.compaction_threshold):
             return messages
 
         start, end = select_messages_to_compact(messages)
@@ -271,9 +267,7 @@ class AgentLoop:
             response = await self.provider.chat(
                 messages=messages, tools=self.tools.get_definitions(), model=self.model
             )
-            messages = await self._maybe_compact(
-                messages, response.usage.get("prompt_tokens", 0)
-            )
+            messages = await self._maybe_compact(messages, response.usage.get("prompt_tokens", 0))
 
             # Handle tool calls
             if response.has_tool_calls:
@@ -284,9 +278,7 @@ class AgentLoop:
                         "type": "function",
                         "function": {
                             "name": tc.name,
-                            "arguments": json.dumps(
-                                tc.arguments
-                            ),  # Must be JSON string
+                            "arguments": json.dumps(tc.arguments),  # Must be JSON string
                         },
                     }
                     for tc in response.tool_calls
@@ -302,9 +294,7 @@ class AgentLoop:
                 for tool_call in response.tool_calls:
                     args_str = json.dumps(tool_call.arguments, ensure_ascii=False)
                     logger.info(f"Tool call: {tool_call.name}({args_str[:200]})")
-                    result = await self.tools.execute(
-                        tool_call.name, tool_call.arguments
-                    )
+                    result = await self.tools.execute(tool_call.name, tool_call.arguments)
                     messages = self.context.add_tool_result(
                         messages, tool_call.id, tool_call.name, result
                     )
@@ -324,9 +314,7 @@ class AgentLoop:
             final_content = "I've completed processing but have no response to give."
 
         # Log response preview
-        preview = (
-            final_content[:120] + "..." if len(final_content) > 120 else final_content
-        )
+        preview = final_content[:120] + "..." if len(final_content) > 120 else final_content
         logger.info(f"Response to {msg.channel}:{msg.sender_id}: {preview}")
 
         # Save to session
@@ -342,9 +330,7 @@ class AgentLoop:
             or {},  # Pass through for channel-specific needs (e.g. Slack thread_ts)
         )
 
-    async def _process_system_message(
-        self, msg: InboundMessage
-    ) -> OutboundMessage | None:
+    async def _process_system_message(self, msg: InboundMessage) -> OutboundMessage | None:
         """
         Process a system message (e.g., subagent announce).
 
@@ -400,9 +386,7 @@ class AgentLoop:
                 messages=messages, tools=self.tools.get_definitions(), model=self.model
             )
 
-            messages = await self._maybe_compact(
-                messages, response.usage.get("prompt_tokens", 0)
-            )
+            messages = await self._maybe_compact(messages, response.usage.get("prompt_tokens", 0))
 
             if response.has_tool_calls:
                 tool_call_dicts = [
@@ -426,9 +410,7 @@ class AgentLoop:
                 for tool_call in response.tool_calls:
                     args_str = json.dumps(tool_call.arguments, ensure_ascii=False)
                     logger.info(f"Tool call: {tool_call.name}({args_str[:200]})")
-                    result = await self.tools.execute(
-                        tool_call.name, tool_call.arguments
-                    )
+                    result = await self.tools.execute(tool_call.name, tool_call.arguments)
                     messages = self.context.add_tool_result(
                         messages, tool_call.id, tool_call.name, result
                     )
@@ -476,13 +458,9 @@ class AgentLoop:
         Returns:
             The agent's response.
         """
-        msg = InboundMessage(
-            channel=channel, sender_id="user", chat_id=chat_id, content=content
-        )
+        msg = InboundMessage(channel=channel, sender_id="user", chat_id=chat_id, content=content)
 
-        msg = InboundMessage(
-            channel=channel, sender_id="user", chat_id=chat_id, content=content
-        )
+        msg = InboundMessage(channel=channel, sender_id="user", chat_id=chat_id, content=content)
 
         response = await self._process_message(msg)
         return response.content if response else ""

@@ -434,13 +434,12 @@ def _make_provider(config):
 # Gateway / Server
 # ============================================================================
 
+gateway_app = typer.Typer(invoke_without_command=True, help="Manage the nanobot gateway service")
+app.add_typer(gateway_app, name="gateway")
 
-@app.command()
-def gateway(
-    port: int = typer.Option(18790, "--port", "-p", help="Gateway port"),
-    verbose: bool = typer.Option(False, "--verbose", "-v", help="Verbose output"),
-):
-    """Start the nanobot gateway."""
+
+def _run_gateway_foreground(port: int, verbose: bool) -> None:
+    """Start the gateway in the foreground (original behavior)."""
     from nanobot.agent.loop import AgentLoop
     from nanobot.bus.queue import MessageBus
     from nanobot.channels.manager import ChannelManager
@@ -551,6 +550,152 @@ def gateway(
             await channels.stop_all()
 
     asyncio.run(run())
+
+
+@gateway_app.callback()
+def gateway_callback(
+    ctx: typer.Context,
+    port: int = typer.Option(18790, "--port", "-p", help="Gateway port"),
+    verbose: bool = typer.Option(False, "--verbose", "-v", help="Verbose output"),
+):
+    """Start the nanobot gateway (foreground by default)."""
+    ctx.ensure_object(dict)
+    ctx.obj["port"] = port
+    ctx.obj["verbose"] = verbose
+    if ctx.invoked_subcommand is None:
+        _run_gateway_foreground(port, verbose)
+
+
+@gateway_app.command("run")
+def gateway_run(ctx: typer.Context):
+    """Run the gateway in the foreground (used by daemon service file)."""
+    _run_gateway_foreground(ctx.obj["port"], ctx.obj["verbose"])
+
+
+@gateway_app.command("install")
+def gateway_install():
+    """Install the gateway as an OS background service."""
+    try:
+        dm = _get_daemon_manager()
+        service_file = dm.install()
+        console.print(f"[green]✓[/green] Service installed: {service_file}")
+        console.print("Start with: [cyan]nanobot gateway start[/cyan]")
+    except RuntimeError as e:
+        console.print(f"[red]Error:[/red] {e}")
+        raise typer.Exit(1)
+
+
+@gateway_app.command("uninstall")
+def gateway_uninstall():
+    """Remove the gateway OS background service."""
+    try:
+        dm = _get_daemon_manager()
+        dm.uninstall()
+        console.print("[green]✓[/green] Service uninstalled")
+    except RuntimeError as e:
+        console.print(f"[red]Error:[/red] {e}")
+        raise typer.Exit(1)
+
+
+@gateway_app.command("start")
+def gateway_start():
+    """Start the gateway daemon via the OS service manager."""
+    try:
+        dm = _get_daemon_manager()
+        dm.start()
+        console.print("[green]✓[/green] Gateway daemon started")
+    except RuntimeError as e:
+        console.print(f"[red]Error:[/red] {e}")
+        raise typer.Exit(1)
+
+
+@gateway_app.command("stop")
+def gateway_stop():
+    """Stop the gateway daemon."""
+    try:
+        dm = _get_daemon_manager()
+        dm.stop()
+        console.print("[green]✓[/green] Gateway daemon stopped")
+    except RuntimeError as e:
+        console.print(f"[red]Error:[/red] {e}")
+        raise typer.Exit(1)
+
+
+@gateway_app.command("restart")
+def gateway_restart():
+    """Restart the gateway daemon."""
+    try:
+        dm = _get_daemon_manager()
+        dm.restart()
+        console.print("[green]✓[/green] Gateway daemon restarted")
+    except RuntimeError as e:
+        console.print(f"[red]Error:[/red] {e}")
+        raise typer.Exit(1)
+
+
+@gateway_app.command("status")
+def gateway_status():
+    """Show gateway daemon status."""
+    try:
+        dm = _get_daemon_manager()
+    except RuntimeError as e:
+        console.print(f"[red]Error:[/red] {e}")
+        raise typer.Exit(1)
+
+    info = dm.get_info()
+    log_out, log_err = dm.log_paths()
+
+    table = Table(title="Gateway Daemon Status")
+    table.add_column("Property", style="cyan")
+    table.add_column("Value")
+
+    table.add_row("Service", info.name)
+    table.add_row("Installed", "[green]yes[/green]" if info.installed else "[red]no[/red]")
+    table.add_row("Running", "[green]yes[/green]" if info.running else "[dim]no[/dim]")
+    table.add_row("PID", str(info.pid) if info.pid else "-")
+    table.add_row("Service file", str(info.service_file) if info.service_file else "-")
+    table.add_row("Stdout log", str(log_out))
+    table.add_row("Stderr log", str(log_err))
+
+    console.print(table)
+
+
+@gateway_app.command("logs")
+def gateway_logs(
+    follow: bool = typer.Option(False, "--follow", "-f", help="Follow log output"),
+    lines: int = typer.Option(50, "--lines", "-n", help="Number of lines to show"),
+    stderr: bool = typer.Option(False, "--stderr", "-e", help="Show stderr log instead"),
+):
+    """Tail gateway log files."""
+    import subprocess as sp
+
+    dm = _get_daemon_manager()
+    log_out, log_err = dm.log_paths()
+    log_file = log_err if stderr else log_out
+
+    if not log_file.exists():
+        console.print(f"[yellow]Log file not found:[/yellow] {log_file}")
+        console.print("Has the gateway been started as a daemon?")
+        raise typer.Exit(1)
+
+    cmd = ["tail", f"-n{lines}"]
+    if follow:
+        cmd.append("-f")
+    cmd.append(str(log_file))
+
+    try:
+        sp.run(cmd)
+    except KeyboardInterrupt:
+        pass
+
+
+def _get_daemon_manager():
+    """Create a DaemonManager, loading config for env_passthrough."""
+    from nanobot.config.loader import load_config
+    from nanobot.daemon import DaemonManager
+
+    config = load_config()
+    return DaemonManager(extra_env_passthrough=config.daemon.env_passthrough)
 
 
 # ============================================================================

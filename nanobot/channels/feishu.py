@@ -305,7 +305,9 @@ class FeishuChannel(BaseChannel):
             if sender_type == "bot":
                 return
 
-            sender_id: str = (sender.sender_id.open_id if sender.sender_id else "unknown") or "unknown"  # type: ignore[union-attr]
+            sender_id: str = (
+                sender.sender_id.open_id if sender.sender_id else "unknown"
+            ) or "unknown"  # type: ignore[union-attr]
             chat_id: str = message.chat_id or ""  # type: ignore[union-attr]
             chat_type: str = message.chat_type or ""  # type: ignore[union-attr]  # "p2p" or "group"
             msg_type: str = message.message_type or ""  # type: ignore[union-attr]

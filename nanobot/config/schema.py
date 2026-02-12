@@ -89,9 +89,7 @@ class EmailConfig(BaseModel):
     mark_seen: bool = True
     max_body_chars: int = 12000
     subject_prefix: str = "Re: "
-    allow_from: list[str] = Field(
-        default_factory=list
-    )  # Allowed sender email addresses
+    allow_from: list[str] = Field(default_factory=list)  # Allowed sender email addresses
 
 
 class MochatMentionConfig(BaseModel):
@@ -151,9 +149,7 @@ class SlackConfig(BaseModel):
     app_token: str = ""  # xapp-...
     user_token_read_only: bool = True
     group_policy: str = "mention"  # "mention", "open", "allowlist"
-    group_allow_from: list[str] = Field(
-        default_factory=list
-    )  # Allowed channel IDs if allowlist
+    group_allow_from: list[str] = Field(default_factory=list)  # Allowed channel IDs if allowlist
     dm: SlackDMConfig = Field(default_factory=SlackDMConfig)
 
 
@@ -210,9 +206,7 @@ class ProviderConfig(BaseModel):
 
     api_key: str = ""
     api_base: str | None = None
-    extra_headers: dict[str, str] | None = (
-        None  # Custom headers (e.g. APP-Code for AiHubMix)
-    )
+    extra_headers: dict[str, str] | None = None  # Custom headers (e.g. APP-Code for AiHubMix)
 
 
 class ProvidersConfig(BaseModel):
@@ -229,9 +223,7 @@ class ProvidersConfig(BaseModel):
     gemini: ProviderConfig = Field(default_factory=ProviderConfig)
     moonshot: ProviderConfig = Field(default_factory=ProviderConfig)
     minimax: ProviderConfig = Field(default_factory=ProviderConfig)
-    aihubmix: ProviderConfig = Field(
-        default_factory=ProviderConfig
-    )  # AiHubMix API gateway
+    aihubmix: ProviderConfig = Field(default_factory=ProviderConfig)  # AiHubMix API gateway
 
 
 class HeartbeatConfig(BaseModel):
@@ -272,9 +264,7 @@ class ToolsConfig(BaseModel):
 
     web: WebToolsConfig = Field(default_factory=WebToolsConfig)
     exec: ExecToolConfig = Field(default_factory=ExecToolConfig)
-    restrict_to_workspace: bool = (
-        False  # If true, restrict all tool access to workspace directory
-    )
+    restrict_to_workspace: bool = False  # If true, restrict all tool access to workspace directory
 
 
 class MCPServerConfig(BaseModel):
@@ -287,6 +277,12 @@ class MCPServerConfig(BaseModel):
     url: str = ""  # For SSE type servers
 
 
+class DaemonConfig(BaseModel):
+    """Daemon/background service configuration."""
+
+    env_passthrough: list[str] = Field(default_factory=list)  # Extra env vars to propagate
+
+
 class Config(BaseSettings):
     """Root configuration for nanobot."""
 
@@ -296,9 +292,8 @@ class Config(BaseSettings):
     gateway: GatewayConfig = Field(default_factory=GatewayConfig)
     heartbeat: HeartbeatConfig = Field(default_factory=HeartbeatConfig)
     tools: ToolsConfig = Field(default_factory=ToolsConfig)
-    mcp_servers: dict[str, MCPServerConfig] = Field(
-        default_factory=dict, alias="mcpServers"
-    )
+    daemon: DaemonConfig = Field(default_factory=DaemonConfig)
+    mcp_servers: dict[str, MCPServerConfig] = Field(default_factory=dict, alias="mcpServers")
 
     @property
     def workspace_path(self) -> Path:

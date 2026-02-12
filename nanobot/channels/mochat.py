@@ -384,7 +384,9 @@ class MochatChannel(BaseChannel):
             reconnection=True,
             reconnection_attempts=self.config.max_retry_attempts or 0,
             reconnection_delay=int(max(0.1, self.config.socket_reconnect_delay_ms / 1000.0)),
-            reconnection_delay_max=int(max(0.1, self.config.socket_max_reconnect_delay_ms / 1000.0)),
+            reconnection_delay_max=int(
+                max(0.1, self.config.socket_max_reconnect_delay_ms / 1000.0)
+            ),
             logger=False,
             engineio_logger=False,
             serializer=serializer,
