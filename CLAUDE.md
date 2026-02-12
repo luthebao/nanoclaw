@@ -50,6 +50,7 @@ Registry-driven (`providers/registry.py`): each provider is a `ProviderSpec` dat
 ### Context Building
 
 `ContextBuilder` (`agent/context.py`) assembles the system prompt from:
+
 1. Identity + runtime info
 2. Bootstrap files: `AGENTS.md`, `SOUL.md`, `USER.md`, `TOOLS.md` (from workspace)
 3. Long-term memory (`memory/MEMORY.md`) + recent daily notes (7 days)
@@ -66,7 +67,7 @@ YAML frontmatter + Markdown in `nanoclaw/skills/` and `workspace/skills/`. Progr
 
 ### Sessions
 
-JSONL storage in `~/.nanobot/sessions/`. Key format: `{channel}:{chat_id}`. History capped at 50 messages.
+JSONL storage in `~/.nanoclaw/sessions/`. Key format: `{channel}:{chat_id}`. History capped at 50 messages.
 
 ### Subagents
 
@@ -76,7 +77,7 @@ Spawned via `spawn` tool. Isolated context with focused system prompt. No messag
 
 - Python ≥3.11, type hints throughout, Pydantic models for config
 - Ruff: line-length 100, rules E/F/I/N/W, E501 ignored
-- Config: `~/.nanobot/config.json`, env vars with `NANOCLAW_` prefix
-- Workspace: `~/.nanobot/workspace/` (customizable)
+- Config: `~/.nanoclaw/config.json`, env vars with `NANOCLAW_` prefix
+- Workspace: `~/.nanoclaw/workspace/` (customizable)
 - All channel integrations implement `BaseChannel` with `start()`, `stop()`, `send()`
 - Provider additions go through `ProviderSpec` in the registry — no if-elif chains

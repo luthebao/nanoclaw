@@ -5,6 +5,6 @@ services:
     ports:
       - "18790:18790"
     volumes:
-      - ~/.nanobot:/root/.nanobot
+      - ~/.nanoclaw:/root/.nanoclaw
       - /var/run/docker.sock:/var/run/docker.sock
     restart: unless-stopped

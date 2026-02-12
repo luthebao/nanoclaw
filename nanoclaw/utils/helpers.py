@@ -10,9 +10,20 @@ def ensure_dir(path: Path) -> Path:
     return path
 
 
+def _resolve_data_dir() -> Path:
+    """Resolve the data directory, preferring ~/.nanoclaw/ with ~/.nanobot/ fallback."""
+    new = Path.home() / ".nanoclaw"
+    old = Path.home() / ".nanobot"
+    if new.exists():
+        return new
+    if old.exists():
+        return old
+    return new  # new installs get ~/.nanoclaw/
+
+
 def get_data_path() -> Path:
-    """Get the nanoclaw data directory (~/.nanobot)."""
-    return ensure_dir(Path.home() / ".nanobot")
+    """Get the nanoclaw data directory (~/.nanoclaw, with ~/.nanobot fallback)."""
+    return ensure_dir(_resolve_data_dir())
 
 
 def get_workspace_path(workspace: str | None = None) -> Path:
@@ -20,7 +31,7 @@ def get_workspace_path(workspace: str | None = None) -> Path:
     Get the workspace path.
 
     Args:
-        workspace: Optional workspace path. Defaults to ~/.nanobot/workspace.
+        workspace: Optional workspace path. Defaults to ~/.nanoclaw/workspace.
 
     Returns:
         Expanded and ensured workspace path.
@@ -28,7 +39,7 @@ def get_workspace_path(workspace: str | None = None) -> Path:
     if workspace:
         path = Path(workspace).expanduser()
     else:
-        path = Path.home() / ".nanobot" / "workspace"
+        path = _resolve_data_dir() / "workspace"
     return ensure_dir(path)
 
 

@@ -1,18 +1,6 @@
-<div align="center">
-  <img src="nanoclaw_logo.png" alt="nanoclaw" width="500">
-  <h1>nanoclaw: Ultra-Lightweight Personal AI Assistant</h1>
-  <p>
-    <a href="https://pypi.org/project/nanoclaw-ai/"><img src="https://img.shields.io/pypi/v/nanoclaw-ai" alt="PyPI"></a>
-    <a href="https://pepy.tech/project/nanoclaw-ai"><img src="https://static.pepy.tech/badge/nanoclaw-ai" alt="Downloads"></a>
-    <img src="https://img.shields.io/badge/python-≥3.11-blue" alt="Python">
-    <img src="https://img.shields.io/badge/license-MIT-green" alt="License">
-    <a href="./COMMUNICATION.md"><img src="https://img.shields.io/badge/Feishu-Group-E9DBFC?style=flat&logo=feishu&logoColor=white" alt="Feishu"></a>
-    <a href="./COMMUNICATION.md"><img src="https://img.shields.io/badge/WeChat-Group-C5EAB4?style=flat&logo=wechat&logoColor=white" alt="WeChat"></a>
-    <a href="https://discord.gg/MnCvHqpUGB"><img src="https://img.shields.io/badge/Discord-Community-5865F2?style=flat&logo=discord&logoColor=white" alt="Discord"></a>
-  </p>
-</div>
+# Nanoclaw: Ultra-Lightweight Personal AI Assistant
 
-🐈 **nanoclaw** is an **ultra-lightweight** personal AI assistant inspired by [OpenClaw](https://github.com/openclaw/openclaw)
+🐈 **nanoclaw** is an **ultra-lightweight** personal AI assistant built on top of [NHKUDS/nanobot](https://github.com/HKUDS/nanobot)
 
 ⚡️ Delivers core agent functionality in just **~4,000** lines of code — **99% smaller** than Clawdbot's 430k+ lines.
 
@@ -30,32 +18,14 @@
 
 ## 🏗️ Architecture
 
-<p align="center">
-  <img src="nanoclaw_arch.png" alt="nanoclaw architecture" width="800">
-</p>
+![nanoclaw architecture](nanoclaw_arch.png)
 
 ## ✨ Features
 
-<table align="center">
-  <tr align="center">
-    <th><p align="center">📈 24/7 Real-Time Market Analysis</p></th>
-    <th><p align="center">🚀 Full-Stack Software Engineer</p></th>
-    <th><p align="center">📅 Smart Daily Routine Manager</p></th>
-    <th><p align="center">📚 Personal Knowledge Assistant</p></th>
-  </tr>
-  <tr>
-    <td align="center"><p align="center"><img src="case/search.gif" width="180" height="400"></p></td>
-    <td align="center"><p align="center"><img src="case/code.gif" width="180" height="400"></p></td>
-    <td align="center"><p align="center"><img src="case/scedule.gif" width="180" height="400"></p></td>
-    <td align="center"><p align="center"><img src="case/memory.gif" width="180" height="400"></p></td>
-  </tr>
-  <tr>
-    <td align="center">Discovery • Insights • Trends</td>
-    <td align="center">Develop • Deploy • Scale</td>
-    <td align="center">Schedule • Automate • Organize</td>
-    <td align="center">Learn • Memory • Reasoning</td>
-  </tr>
-</table>
+| 📈 24/7 Real-Time Market Analysis | 🚀 Full-Stack Software Engineer | 📅 Smart Daily Routine Manager | 📚 Personal Knowledge Assistant |
+|---|---|---|---|
+| ![](case/search.gif) | ![](case/code.gif) | ![](case/scedule.gif) | ![](case/memory.gif) |
+| Discovery • Insights • Trends | Develop • Deploy • Scale | Schedule • Automate • Organize | Learn • Memory • Reasoning |
 
 ## 📦 Install
 
@@ -82,7 +52,7 @@ pip install nanoclaw-ai
 ## 🚀 Quick Start
 
 > [!TIP]
-> Set your API key in `~/.nanobot/config.json`.
+> Set your API key in `~/.nanoclaw/config.json`.
 > Get API keys: [OpenRouter](https://openrouter.ai/keys) (Global) · [Brave Search](https://brave.com/search/api/) (optional, for web search)
 
 **1. Initialize**
@@ -91,7 +61,7 @@ pip install nanoclaw-ai
 nanoclaw onboard
 ```
 
-**2. Configure** (`~/.nanobot/config.json`)
+**2. Configure** (`~/.nanoclaw/config.json`)
 
 For OpenRouter - recommended for global users:
 
@@ -128,7 +98,7 @@ Run nanoclaw with your own local models using vLLM or any OpenAI-compatible serv
 vllm serve meta-llama/Llama-3.1-8B-Instruct --port 8000
 ```
 
-**2. Configure** (`~/.nanobot/config.json`)
+**2. Configure** (`~/.nanoclaw/config.json`)
 
 ```json
 {
@@ -171,8 +141,7 @@ Talk to your nanoclaw through Telegram, Discord, WhatsApp, Feishu, Mochat, DingT
 | **Email** | Medium (IMAP/SMTP credentials) |
 | **QQ** | Easy (app credentials) |
 
-<details>
-<summary><b>Telegram</b> (Recommended)</summary>
+### Telegram (Recommended)
 
 **1. Create a bot**
 
@@ -203,10 +172,7 @@ Talk to your nanoclaw through Telegram, Discord, WhatsApp, Feishu, Mochat, DingT
 nanoclaw gateway
 ```
 
-</details>
-
-<details>
-<summary><b>Mochat (Claw IM)</b></summary>
+### Mochat (Claw IM)
 
 Uses **Socket.IO WebSocket** by default, with HTTP polling fallback.
 
@@ -218,7 +184,7 @@ Simply send this message to nanoclaw (replace `xxx@xxx` with your real email):
 Register on MoChat. My Email account is xxx@xxx Bind me as your owner and DM me on MoChat.
 ```
 
-nanoclaw will automatically register, configure `~/.nanobot/config.json`, and connect to Mochat.
+nanoclaw will automatically register, configure `~/.nanoclaw/config.json`, and connect to Mochat.
 
 **2. Restart gateway**
 
@@ -228,12 +194,9 @@ nanoclaw gateway
 
 That's it — nanoclaw handles the rest!
 
-<br>
+#### Manual configuration (advanced)
 
-<details>
-<summary>Manual configuration (advanced)</summary>
-
-If you prefer to configure manually, add the following to `~/.nanobot/config.json`:
+If you prefer to configure manually, add the following to `~/.nanoclaw/config.json`:
 
 > Keep `claw_token` private. It should only be sent in `X-Claw-Token` header to your Mochat API endpoint.
 
@@ -256,16 +219,11 @@ If you prefer to configure manually, add the following to `~/.nanobot/config.jso
 }
 ```
 
-</details>
-
-</details>
-
-<details>
-<summary><b>Discord</b></summary>
+### Discord
 
 **1. Create a bot**
 
-- Go to <https://discord.com/developers/applications>
+- Go to [discord.com/developers/applications](https://discord.com/developers/applications)
 - Create an application → Bot → Add Bot
 - Copy the bot token
 
@@ -306,10 +264,7 @@ If you prefer to configure manually, add the following to `~/.nanobot/config.jso
 nanoclaw gateway
 ```
 
-</details>
-
-<details>
-<summary><b>WhatsApp</b></summary>
+### WhatsApp
 
 Requires **Node.js ≥18**.
 
@@ -343,10 +298,7 @@ nanoclaw channels login
 nanoclaw gateway
 ```
 
-</details>
-
-<details>
-<summary><b>Feishu (飞书)</b></summary>
+### Feishu (飞书)
 
 Uses **WebSocket** long connection — no public IP required.
 
@@ -389,10 +341,7 @@ nanoclaw gateway
 > [!TIP]
 > Feishu uses WebSocket to receive messages — no webhook or public IP needed!
 
-</details>
-
-<details>
-<summary><b>QQ (QQ单聊)</b></summary>
+### QQ (QQ单聊)
 
 Uses **botpy SDK** with WebSocket — no public IP required. Currently supports **private messages only**.
 
@@ -434,10 +383,7 @@ nanoclaw gateway
 
 Now send a message to the bot from QQ — it should respond!
 
-</details>
-
-<details>
-<summary><b>DingTalk (钉钉)</b></summary>
+### DingTalk (钉钉)
 
 Uses **Stream Mode** — no public IP required.
 
@@ -474,10 +420,7 @@ Uses **Stream Mode** — no public IP required.
 nanoclaw gateway
 ```
 
-</details>
-
-<details>
-<summary><b>Slack</b></summary>
+### Slack
 
 Uses **Socket Mode** — no public URL required.
 
@@ -522,10 +465,7 @@ DM the bot directly or @mention it in a channel — it should respond!
 > - `groupPolicy`: `"mention"` (default — respond only when @mentioned), `"open"` (respond to all channel messages), or `"allowlist"` (restrict to specific channels).
 > - DM policy defaults to open. Set `"dm": {"enabled": false}` to disable DMs.
 
-</details>
-
-<details>
-<summary><b>Email</b></summary>
+### Email
 
 Give nanoclaw its own email account. It polls **IMAP** for incoming mail and replies via **SMTP** — like a personal email assistant.
 
@@ -569,8 +509,6 @@ Give nanoclaw its own email account. It polls **IMAP** for incoming mail and rep
 nanoclaw gateway
 ```
 
-</details>
-
 ## 🌐 Agent Social Network
 
 🐈 nanoclaw is capable of linking to the agent social network (agent community). **Just send one message and your nanoclaw joins automatically!**
@@ -584,7 +522,7 @@ Simply send the command above to your nanoclaw (via CLI or any chat channel), an
 
 ## ⚙️ Configuration
 
-Config file: `~/.nanobot/config.json`
+Config file: `~/.nanoclaw/config.json`
 
 ### Providers
 
@@ -609,8 +547,7 @@ Config file: `~/.nanobot/config.json`
 | `zhipu` | LLM (Zhipu GLM) | [open.bigmodel.cn](https://open.bigmodel.cn) |
 | `vllm` | LLM (local, any OpenAI-compatible server) | — |
 
-<details>
-<summary><b>Adding a New Provider (Developer Guide)</b></summary>
+### Adding a New Provider (Developer Guide)
 
 nanoclaw uses a **Provider Registry** (`nanoclaw/providers/registry.py`) as the single source of truth.
 Adding a new provider only takes **2 steps** — no if-elif chains to touch.
@@ -651,8 +588,6 @@ That's it! Environment variables, model prefixing, config matching, and `nanocla
 | `detect_by_base_keyword` | Detect gateway by API base URL | `"openrouter"` |
 | `strip_model_prefix` | Strip existing prefix before re-prefixing | `True` (for AiHubMix) |
 
-</details>
-
 ### Security
 
 > For production deployments, set `"restrictToWorkspace": true` in your config to sandbox the agent.
@@ -678,8 +613,7 @@ That's it! Environment variables, model prefixing, config matching, and `nanocla
 
 Interactive mode exits: `exit`, `quit`, `/exit`, `/quit`, `:q`, or `Ctrl+D`.
 
-<details>
-<summary><b>Scheduled Tasks (Cron)</b></summary>
+### Scheduled Tasks (Cron)
 
 ```bash
 # Add a job
@@ -690,15 +624,13 @@ nanoclaw cron add --name "hourly" --message "Check status" --every 3600
 nanoclaw cron list
 
 # Remove a job
-nanoclaw cron remove <job_id>
+nanoclaw cron remove JOB_ID
 ```
-
-</details>
 
 ## 🐳 Docker
 
 > [!TIP]
-> The `-v ~/.nanobot:/root/.nanobot` flag mounts your local config directory into the container, so your config and workspace persist across container restarts.
+> The `-v ~/.nanoclaw:/root/.nanoclaw` flag mounts your local config directory into the container, so your config and workspace persist across container restarts.
 
 Build and run nanoclaw in a container:
 
@@ -707,22 +639,22 @@ Build and run nanoclaw in a container:
 docker build -t nanoclaw .
 
 # Initialize config (first time only)
-docker run -v ~/.nanobot:/root/.nanobot --rm nanoclaw onboard
+docker run -v ~/.nanoclaw:/root/.nanoclaw --rm nanoclaw onboard
 
 # Edit config on host to add API keys
-vim ~/.nanobot/config.json
+vim ~/.nanoclaw/config.json
 
 # Run gateway (connects to enabled channels, e.g. Telegram/Discord/Mochat)
-docker run -v ~/.nanobot:/root/.nanobot -p 18790:18790 nanoclaw gateway
+docker run -v ~/.nanoclaw:/root/.nanoclaw -p 18790:18790 nanoclaw gateway
 
 # Or run a single command
-docker run -v ~/.nanobot:/root/.nanobot --rm nanoclaw agent -m "Hello!"
-docker run -v ~/.nanobot:/root/.nanobot --rm nanoclaw status
+docker run -v ~/.nanoclaw:/root/.nanoclaw --rm nanoclaw agent -m "Hello!"
+docker run -v ~/.nanoclaw:/root/.nanoclaw --rm nanoclaw status
 ```
 
 ## 📁 Project Structure
 
-```
+```sh
 nanoclaw/
 ├── agent/          # 🧠 Core agent logic
 │   ├── loop.py     #    Agent loop (LLM ↔ tool execution)
@@ -742,19 +674,4 @@ nanoclaw/
 └── cli/            # 🖥️ Commands
 ```
 
-## 🤝 Contribute & Roadmap
-
-PRs welcome! The codebase is intentionally small and readable. 🤗
-
-**Roadmap** — Pick an item and [open a PR](https://github.com/luthebao/nanoclaw/pulls)!
-
-- [x] **Voice Transcription** — Support for Groq Whisper (Issue #13)
-- [ ] **Multi-modal** — See and hear (images, voice, video)
-- [ ] **Long-term memory** — Never forget important context
-- [ ] **Better reasoning** — Multi-step planning and reflection
-- [ ] **More integrations** — Calendar and more
-- [ ] **Self-improvement** — Learn from feedback and mistakes
-
-<p align="center">
-  <sub>nanoclaw is for educational, research, and technical exchange purposes only</sub>
-</p>
+_nanoclaw is for educational, research, and technical exchange purposes only_

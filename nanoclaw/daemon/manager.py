@@ -157,5 +157,7 @@ class DaemonManager:
 
     @staticmethod
     def _log_paths() -> tuple[Path, Path]:
-        log_dir = Path.home() / ".nanobot" / "logs"
+        from nanoclaw.utils.helpers import get_data_path
+
+        log_dir = get_data_path() / "logs"
         return log_dir / "gateway.out.log", log_dir / "gateway.err.log"

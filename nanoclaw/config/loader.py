@@ -9,7 +9,9 @@ from nanoclaw.config.schema import Config
 
 def get_config_path() -> Path:
     """Get the default configuration file path."""
-    return Path.home() / ".nanobot" / "config.json"
+    from nanoclaw.utils.helpers import _resolve_data_dir
+
+    return _resolve_data_dir() / "config.json"
 
 
 def get_data_dir() -> Path:
