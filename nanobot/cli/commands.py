@@ -3,6 +3,7 @@
 import asyncio
 import os
 import select
+import shutil
 import signal
 import sys
 from pathlib import Path
@@ -411,6 +412,17 @@ This file stores important information that should persist across sessions.
     # Create skills directory for custom user skills
     skills_dir = workspace / "skills"
     skills_dir.mkdir(exist_ok=True)
+
+    # Copy built-in skills to workspace (skip existing to preserve customizations)
+    from nanobot.agent.skills import BUILTIN_SKILLS_DIR
+
+    if BUILTIN_SKILLS_DIR.exists():
+        for skill_dir in BUILTIN_SKILLS_DIR.iterdir():
+            if skill_dir.is_dir():
+                target = skills_dir / skill_dir.name
+                if not target.exists():
+                    shutil.copytree(skill_dir, target)
+                    console.print(f"  [dim]Installed skill: {skill_dir.name}[/dim]")
 
 
 def _make_provider(config):
