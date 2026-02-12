@@ -106,21 +106,44 @@ class DaemonManager:
     # ------------------------------------------------------------------
 
     @staticmethod
+    def _is_venv_path(p: Path) -> bool:
+        """Return True if *p* lives inside a virtualenv directory."""
+        s = str(p.resolve())
+        return "/.venv/" in s or "/venv/" in s
+
+    @staticmethod
     def _resolve_nanoclaw_command() -> list[str]:
         """Find the best way to invoke ``nanoclaw gateway run``."""
-        # Strategy 1: look for nanoclaw binary next to current Python
-        bin_dir = Path(sys.executable).parent
-        candidate = bin_dir / "nanoclaw"
-        if candidate.is_file():
-            return [str(candidate), "gateway", "run"]
+        is_venv = DaemonManager._is_venv_path
+        on_macos = platform.system() == "Darwin"
 
-        # Strategy 2: shutil.which
+        # Strategy 1: system-wide nanoclaw (avoids venv sandbox issues with launchd)
         which = shutil.which("nanoclaw")
         if which:
-            return [which, "gateway", "run"]
+            which_path = Path(which)
+            if not (on_macos and is_venv(which_path)):
+                return [str(which_path.resolve()), "gateway", "run"]
 
-        # Strategy 3: python -m nanoclaw
-        return [sys.executable, "-m", "nanoclaw", "gateway", "run"]
+        # Strategy 2: nanoclaw binary next to current Python
+        bin_dir = Path(sys.executable).parent
+        candidate = bin_dir / "nanoclaw"
+        if candidate.is_file() and not (on_macos and is_venv(candidate)):
+            return [str(candidate), "gateway", "run"]
+
+        # Strategy 3: python -m nanoclaw (fallback)
+        if not (on_macos and is_venv(Path(sys.executable))):
+            return [sys.executable, "-m", "nanoclaw", "gateway", "run"]
+
+        # All strategies resolved to venv paths on macOS — fail with guidance
+        raise RuntimeError(
+            "Cannot install the gateway daemon from a virtualenv on macOS.\n"
+            "launchd cannot access .venv paths due to sandbox restrictions.\n\n"
+            "Install nanoclaw globally first:\n"
+            "  uv tool install .          # from the project directory\n"
+            "Then re-run:\n"
+            "  nanoclaw gateway install\n"
+            "  nanoclaw gateway start"
+        )
 
     # ------------------------------------------------------------------
     # Environment

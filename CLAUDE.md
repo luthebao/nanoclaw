@@ -35,7 +35,7 @@ uv run nanoclaw gateway
 
 ### Message Flow
 
-```
+```sh
 Channel (telegram/discord/slack/...) → MessageBus (async queues) → AgentLoop → LLMProvider (via LiteLLM) → Tool execution loop → MessageBus → Channel.send()
 ```
 

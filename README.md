@@ -1,5 +1,7 @@
 # Nanoclaw: Ultra-Lightweight Personal AI Assistant
 
+<!-- markdownlint-disable MD013 MD036 MD060 -->
+
 🐈 **nanoclaw** is an **ultra-lightweight** personal AI assistant built on top of [NHKUDS/nanobot](https://github.com/HKUDS/nanobot)
 
 ⚡️ Delivers core agent functionality in just **~4,000** lines of code — **99% smaller** than Clawdbot's 430k+ lines.
@@ -24,7 +26,7 @@
 
 | 📈 24/7 Real-Time Market Analysis | 🚀 Full-Stack Software Engineer | 📅 Smart Daily Routine Manager | 📚 Personal Knowledge Assistant |
 |---|---|---|---|
-| ![](case/search.gif) | ![](case/code.gif) | ![](case/scedule.gif) | ![](case/memory.gif) |
+| ![Market analysis demo](case/search.gif) | ![Coding demo](case/code.gif) | ![Schedule demo](case/scedule.gif) | ![Memory demo](case/memory.gif) |
 | Discovery • Insights • Trends | Develop • Deploy • Scale | Schedule • Automate • Organize | Learn • Memory • Reasoning |
 
 ## 📦 Install
@@ -180,7 +182,7 @@ Uses **Socket.IO WebSocket** by default, with HTTP polling fallback.
 
 Simply send this message to nanoclaw (replace `xxx@xxx` with your real email):
 
-```
+```text
 Register on MoChat. My Email account is xxx@xxx Bind me as your owner and DM me on MoChat.
 ```
 
@@ -627,6 +629,53 @@ nanoclaw cron list
 nanoclaw cron remove JOB_ID
 ```
 
+## 🖥️ Gateway Daemon (macOS)
+
+Run the gateway as a background service via launchd so it starts automatically and survives reboots.
+
+> [!IMPORTANT]
+> On macOS, launchd cannot access virtualenv paths due to sandbox restrictions.
+> You **must** install nanoclaw globally before setting up the daemon.
+
+**1. Install nanoclaw globally**
+
+```bash
+# From the project directory
+uv tool install .
+
+# Or from PyPI
+uv tool install nanoclaw-ai
+```
+
+To update after making changes to the codebase:
+
+```bash
+uv tool install . --force
+```
+
+**2. Install the daemon service**
+
+```bash
+nanoclaw gateway install
+```
+
+**3. Start the daemon**
+
+```bash
+nanoclaw gateway start
+```
+
+**Other daemon commands:**
+
+```bash
+nanoclaw gateway stop       # Stop the daemon
+nanoclaw gateway restart    # Restart the daemon
+nanoclaw gateway uninstall  # Remove the service
+```
+
+> [!NOTE]
+> If you run `nanoclaw gateway install` from inside a virtualenv (e.g. via `uv run`), it will fail with an error and instructions to install globally first.
+
 ## 🐳 Docker
 
 > [!TIP]
@@ -674,4 +723,4 @@ nanoclaw/
 └── cli/            # 🖥️ Commands
 ```
 
-_nanoclaw is for educational, research, and technical exchange purposes only_
+nanoclaw is for educational, research, and technical exchange purposes only.
