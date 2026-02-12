@@ -6,7 +6,7 @@ import re
 import threading
 import time
 from collections import OrderedDict
-from typing import Any
+from typing import TYPE_CHECKING, Any
 
 from loguru import logger
 
@@ -14,6 +14,17 @@ from nanobot.bus.events import OutboundMessage
 from nanobot.bus.queue import MessageBus
 from nanobot.channels.base import BaseChannel
 from nanobot.config.schema import FeishuConfig
+
+if TYPE_CHECKING:
+    import lark_oapi as lark
+    from lark_oapi.api.im.v1 import (
+        CreateMessageReactionRequest,
+        CreateMessageReactionRequestBody,
+        CreateMessageRequest,
+        CreateMessageRequestBody,
+        Emoji,
+        P2ImMessageReceiveV1,
+    )
 
 try:
     import lark_oapi as lark
@@ -29,8 +40,8 @@ try:
     FEISHU_AVAILABLE = True
 except ImportError:
     FEISHU_AVAILABLE = False
-    lark = None
-    Emoji = None
+    lark = None  # type: ignore[assignment]
+    Emoji = None  # type: ignore[assignment,misc]
 
 # Message type display mapping
 MSG_TYPE_MAP = {
@@ -79,16 +90,16 @@ class FeishuChannel(BaseChannel):
 
         # Create Lark client for sending messages
         self._client = (
-            lark.Client.builder()
+            lark.Client.builder()  # type: ignore[union-attr]
             .app_id(self.config.app_id)
             .app_secret(self.config.app_secret)
-            .log_level(lark.LogLevel.INFO)
+            .log_level(lark.LogLevel.INFO)  # type: ignore[union-attr]
             .build()
         )
 
         # Create event handler (only register message receive, ignore other events)
         event_handler = (
-            lark.EventDispatcherHandler.builder(
+            lark.EventDispatcherHandler.builder(  # type: ignore[union-attr]
                 self.config.encrypt_key or "",
                 self.config.verification_token or "",
             )
@@ -97,11 +108,11 @@ class FeishuChannel(BaseChannel):
         )
 
         # Create WebSocket client for long connection
-        self._ws_client = lark.ws.Client(
+        self._ws_client = lark.ws.Client(  # type: ignore[union-attr]
             self.config.app_id,
             self.config.app_secret,
             event_handler=event_handler,
-            log_level=lark.LogLevel.INFO,
+            log_level=lark.LogLevel.INFO,  # type: ignore[union-attr]
         )
 
         # Start WebSocket client in a separate thread with reconnect loop
@@ -138,11 +149,11 @@ class FeishuChannel(BaseChannel):
         """Sync helper for adding reaction (runs in thread pool)."""
         try:
             request = (
-                CreateMessageReactionRequest.builder()
+                CreateMessageReactionRequest.builder()  # type: ignore[possibly-undefined]
                 .message_id(message_id)
                 .request_body(
-                    CreateMessageReactionRequestBody.builder()
-                    .reaction_type(Emoji.builder().emoji_type(emoji_type).build())
+                    CreateMessageReactionRequestBody.builder()  # type: ignore[possibly-undefined]
+                    .reaction_type(Emoji.builder().emoji_type(emoji_type).build())  # type: ignore[union-attr]
                     .build()
                 )
                 .build()
@@ -239,10 +250,10 @@ class FeishuChannel(BaseChannel):
             content = json.dumps(card, ensure_ascii=False)
 
             request = (
-                CreateMessageRequest.builder()
+                CreateMessageRequest.builder()  # type: ignore[possibly-undefined]
                 .receive_id_type(receive_id_type)
                 .request_body(
-                    CreateMessageRequestBody.builder()
+                    CreateMessageRequestBody.builder()  # type: ignore[possibly-undefined]
                     .receive_id(msg.chat_id)
                     .msg_type("interactive")
                     .content(content)
@@ -264,7 +275,7 @@ class FeishuChannel(BaseChannel):
         except Exception as e:
             logger.error(f"Error sending Feishu message: {e}")
 
-    def _on_message_sync(self, data: "P2ImMessageReceiveV1") -> None:
+    def _on_message_sync(self, data: "P2ImMessageReceiveV1") -> None:  # type: ignore[name-defined]
         """
         Sync handler for incoming messages (called from WebSocket thread).
         Schedules async handling in the main event loop.
@@ -272,16 +283,16 @@ class FeishuChannel(BaseChannel):
         if self._loop and self._loop.is_running():
             asyncio.run_coroutine_threadsafe(self._on_message(data), self._loop)
 
-    async def _on_message(self, data: "P2ImMessageReceiveV1") -> None:
+    async def _on_message(self, data: "P2ImMessageReceiveV1") -> None:  # type: ignore[name-defined]
         """Handle incoming message from Feishu."""
         try:
-            event = data.event
-            message = event.message
-            sender = event.sender
+            event = data.event  # type: ignore[union-attr]
+            message = event.message  # type: ignore[union-attr]
+            sender = event.sender  # type: ignore[union-attr]
 
             # Deduplication check
-            message_id = message.message_id
-            if message_id in self._processed_message_ids:
+            message_id: str = message.message_id or ""  # type: ignore[union-attr]
+            if not message_id or message_id in self._processed_message_ids:
                 return
             self._processed_message_ids[message_id] = None
 
@@ -290,14 +301,14 @@ class FeishuChannel(BaseChannel):
                 self._processed_message_ids.popitem(last=False)
 
             # Skip bot messages
-            sender_type = sender.sender_type
+            sender_type = sender.sender_type  # type: ignore[union-attr]
             if sender_type == "bot":
                 return
 
-            sender_id = sender.sender_id.open_id if sender.sender_id else "unknown"
-            chat_id = message.chat_id
-            chat_type = message.chat_type  # "p2p" or "group"
-            msg_type = message.message_type
+            sender_id: str = (sender.sender_id.open_id if sender.sender_id else "unknown") or "unknown"  # type: ignore[union-attr]
+            chat_id: str = message.chat_id or ""  # type: ignore[union-attr]
+            chat_type: str = message.chat_type or ""  # type: ignore[union-attr]  # "p2p" or "group"
+            msg_type: str = message.message_type or ""  # type: ignore[union-attr]
 
             # Add reaction to indicate "seen"
             await self._add_reaction(message_id, "THUMBSUP")
@@ -305,9 +316,9 @@ class FeishuChannel(BaseChannel):
             # Parse message content
             if msg_type == "text":
                 try:
-                    content = json.loads(message.content).get("text", "")
+                    content = json.loads(message.content or "{}").get("text", "")  # type: ignore[union-attr]
                 except json.JSONDecodeError:
-                    content = message.content or ""
+                    content = message.content or ""  # type: ignore[union-attr]
             else:
                 content = MSG_TYPE_MAP.get(msg_type, f"[{msg_type}]")
 
@@ -315,7 +326,7 @@ class FeishuChannel(BaseChannel):
                 return
 
             # Forward to message bus
-            reply_to = chat_id if chat_type == "group" else sender_id
+            reply_to: str = chat_id if chat_type == "group" else sender_id
             await self._handle_message(
                 sender_id=sender_id,
                 chat_id=reply_to,

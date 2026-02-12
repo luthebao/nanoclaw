@@ -11,6 +11,10 @@ from nanobot.bus.queue import MessageBus
 from nanobot.channels.base import BaseChannel
 from nanobot.config.schema import QQConfig
 
+if TYPE_CHECKING:
+    import botpy
+    from botpy.message import C2CMessage
+
 try:
     import botpy
     from botpy.message import C2CMessage
@@ -18,25 +22,22 @@ try:
     QQ_AVAILABLE = True
 except ImportError:
     QQ_AVAILABLE = False
-    botpy = None
-    C2CMessage = None
-
-if TYPE_CHECKING:
-    from botpy.message import C2CMessage
+    botpy = None  # type: ignore[assignment]
+    C2CMessage = None  # type: ignore[assignment,misc]
 
 
-def _make_bot_class(channel: "QQChannel") -> "type[botpy.Client]":
+def _make_bot_class(channel: "QQChannel") -> type:
     """Create a botpy Client subclass bound to the given channel."""
-    intents = botpy.Intents(public_messages=True, direct_message=True)
+    intents = botpy.Intents(public_messages=True, direct_message=True)  # type: ignore[union-attr]
 
-    class _Bot(botpy.Client):
+    class _Bot(botpy.Client):  # type: ignore[misc,union-attr]
         def __init__(self):
             super().__init__(intents=intents)
 
         async def on_ready(self):
-            logger.info(f"QQ bot ready: {self.robot.name}")
+            logger.info(f"QQ bot ready: {self.robot.name}")  # type: ignore[union-attr]
 
-        async def on_c2c_message_create(self, message: "C2CMessage"):
+        async def on_c2c_message_create(self, message: "C2CMessage"):  # type: ignore[name-defined]
             await channel._on_message(message)
 
         async def on_direct_message_create(self, message):
@@ -53,7 +54,7 @@ class QQChannel(BaseChannel):
     def __init__(self, config: QQConfig, bus: MessageBus):
         super().__init__(config, bus)
         self.config: QQConfig = config
-        self._client: "botpy.Client | None" = None
+        self._client: botpy.Client | None = None  # type: ignore[union-attr]
         self._processed_ids: deque = deque(maxlen=1000)
         self._bot_task: asyncio.Task | None = None
 
@@ -78,7 +79,7 @@ class QQChannel(BaseChannel):
         """Run the bot connection with auto-reconnect."""
         while self._running:
             try:
-                await self._client.start(appid=self.config.app_id, secret=self.config.secret)
+                await self._client.start(appid=self.config.app_id, secret=self.config.secret)  # type: ignore[union-attr]
             except Exception as e:
                 logger.warning(f"QQ bot error: {e}")
             if self._running:
@@ -110,7 +111,7 @@ class QQChannel(BaseChannel):
         except Exception as e:
             logger.error(f"Error sending QQ message: {e}")
 
-    async def _on_message(self, data: "C2CMessage") -> None:
+    async def _on_message(self, data: "C2CMessage") -> None:  # type: ignore[name-defined]
         """Handle incoming message from QQ."""
         try:
             # Dedup by message ID

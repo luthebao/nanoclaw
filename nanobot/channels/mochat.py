@@ -380,11 +380,11 @@ class MochatChannel(BaseChannel):
             else:
                 logger.warning("msgpack not installed but socket_disable_msgpack=false; using JSON")
 
-        client = socketio.AsyncClient(
+        client = socketio.AsyncClient(  # type: ignore[union-attr]
             reconnection=True,
-            reconnection_attempts=self.config.max_retry_attempts or None,
-            reconnection_delay=max(0.1, self.config.socket_reconnect_delay_ms / 1000.0),
-            reconnection_delay_max=max(0.1, self.config.socket_max_reconnect_delay_ms / 1000.0),
+            reconnection_attempts=self.config.max_retry_attempts or 0,
+            reconnection_delay=int(max(0.1, self.config.socket_reconnect_delay_ms / 1000.0)),
+            reconnection_delay_max=int(max(0.1, self.config.socket_max_reconnect_delay_ms / 1000.0)),
             logger=False,
             engineio_logger=False,
             serializer=serializer,
@@ -410,11 +410,11 @@ class MochatChannel(BaseChannel):
         async def connect_error(data: Any) -> None:
             logger.error(f"Mochat websocket connect error: {data}")
 
-        @client.on("claw.session.events")
+        @client.on("claw.session.events")  # type: ignore[misc]
         async def on_session_events(payload: dict[str, Any]) -> None:
             await self._handle_watch_payload(payload, "session")
 
-        @client.on("claw.panel.events")
+        @client.on("claw.panel.events")  # type: ignore[misc]
         async def on_panel_events(payload: dict[str, Any]) -> None:
             await self._handle_watch_payload(payload, "panel")
 
@@ -437,7 +437,7 @@ class MochatChannel(BaseChannel):
                 transports=["websocket"],
                 socketio_path=socket_path,
                 auth={"token": self.config.claw_token},
-                wait_timeout=max(1.0, self.config.socket_connect_timeout_ms / 1000.0),
+                wait_timeout=int(max(1.0, self.config.socket_connect_timeout_ms / 1000.0)),
             )
             return True
         except Exception as e:

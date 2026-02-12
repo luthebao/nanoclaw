@@ -83,7 +83,7 @@ class WhatsAppChannel(BaseChannel):
         except Exception as e:
             logger.error(f"Error sending WhatsApp message: {e}")
 
-    async def _handle_bridge_message(self, raw: str) -> None:
+    async def _handle_bridge_message(self, raw: str | bytes) -> None:
         """Handle a message from the bridge."""
         try:
             data = json.loads(raw)

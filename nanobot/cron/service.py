@@ -244,7 +244,8 @@ class CronService:
         # Handle one-shot jobs
         if job.schedule.kind == "at":
             if job.delete_after_run:
-                self._store.jobs = [j for j in self._store.jobs if j.id != job.id]
+                if self._store:
+                    self._store.jobs = [j for j in self._store.jobs if j.id != job.id]
             else:
                 job.enabled = False
                 job.state.next_run_at_ms = None

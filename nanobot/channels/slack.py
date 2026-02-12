@@ -44,7 +44,7 @@ class SlackChannel(BaseChannel):
             web_client=self._web_client,
         )
 
-        self._socket_client.socket_mode_request_listeners.append(self._on_socket_request)
+        self._socket_client.socket_mode_request_listeners.append(self._on_socket_request)  # type: ignore[arg-type]
 
         # Resolve bot user ID for mention handling
         try:
@@ -154,7 +154,7 @@ class SlackChannel(BaseChannel):
                 await self._web_client.reactions_add(
                     channel=chat_id,
                     name="eyes",
-                    timestamp=event.get("ts"),
+                    timestamp=event.get("ts", ""),
                 )
         except Exception as e:
             logger.debug(f"Slack reactions_add failed: {e}")
