@@ -19,4 +19,5 @@ poetry.lock
 .pytest_cache/
 tests/
 botpy.log
-test.config.json
+*.config.json
+config.json

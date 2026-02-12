@@ -11,18 +11,12 @@ def ensure_dir(path: Path) -> Path:
 
 
 def _resolve_data_dir() -> Path:
-    """Resolve the data directory, preferring ~/.nanoclaw/ with ~/.nanobot/ fallback."""
-    new = Path.home() / ".nanoclaw"
-    old = Path.home() / ".nanobot"
-    if new.exists():
-        return new
-    if old.exists():
-        return old
-    return new  # new installs get ~/.nanoclaw/
+    """Resolve the data directory (~/.nanoclaw/)."""
+    return Path.home() / ".nanoclaw"
 
 
 def get_data_path() -> Path:
-    """Get the nanoclaw data directory (~/.nanoclaw, with ~/.nanobot fallback)."""
+    """Get the nanoclaw data directory (~/.nanoclaw/)."""
     return ensure_dir(_resolve_data_dir())
 
 
