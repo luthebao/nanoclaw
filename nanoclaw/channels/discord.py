@@ -9,10 +9,10 @@ import httpx
 import websockets
 from loguru import logger
 
-from nanobot.bus.events import OutboundMessage
-from nanobot.bus.queue import MessageBus
-from nanobot.channels.base import BaseChannel
-from nanobot.config.schema import DiscordConfig
+from nanoclaw.bus.events import OutboundMessage
+from nanoclaw.bus.queue import MessageBus
+from nanoclaw.channels.base import BaseChannel
+from nanoclaw.config.schema import DiscordConfig
 
 DISCORD_API_BASE = "https://discord.com/api/v10"
 MAX_ATTACHMENT_BYTES = 20 * 1024 * 1024  # 20MB
@@ -155,9 +155,9 @@ class DiscordChannel(BaseChannel):
                 "token": self.config.token,
                 "intents": self.config.intents,
                 "properties": {
-                    "os": "nanobot",
-                    "browser": "nanobot",
-                    "device": "nanobot",
+                    "os": "nanoclaw",
+                    "browser": "nanoclaw",
+                    "device": "nanoclaw",
                 },
             },
         }

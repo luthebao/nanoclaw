@@ -17,13 +17,13 @@ from telegram.ext import (
 )
 from telegram.request import HTTPXRequest
 
-from nanobot.bus.events import OutboundMessage
-from nanobot.bus.queue import MessageBus
-from nanobot.channels.base import BaseChannel
-from nanobot.config.schema import TelegramConfig
+from nanoclaw.bus.events import OutboundMessage
+from nanoclaw.bus.queue import MessageBus
+from nanoclaw.channels.base import BaseChannel
+from nanoclaw.config.schema import TelegramConfig
 
 if TYPE_CHECKING:
-    from nanobot.session.manager import SessionManager
+    from nanoclaw.session.manager import SessionManager
 
 
 def _markdown_to_telegram_html(text: str) -> str:
@@ -241,7 +241,7 @@ class TelegramChannel(BaseChannel):
 
         user = update.effective_user
         await update.message.reply_text(
-            f"👋 Hi {user.first_name}! I'm nanobot.\n\n"
+            f"👋 Hi {user.first_name}! I'm nanoclaw.\n\n"
             "Send me a message and I'll respond!\n"
             "Type /help to see available commands."
         )
@@ -273,7 +273,7 @@ class TelegramChannel(BaseChannel):
             return
 
         help_text = (
-            "🐈 <b>nanobot commands</b>\n\n"
+            "🐈 <b>nanoclaw commands</b>\n\n"
             "/start — Start the bot\n"
             "/reset — Reset conversation history\n"
             "/help — Show this help message\n\n"
@@ -344,7 +344,7 @@ class TelegramChannel(BaseChannel):
 
                 # Handle voice transcription
                 if media_type == "voice" or media_type == "audio":
-                    from nanobot.providers.transcription import (
+                    from nanoclaw.providers.transcription import (
                         GroqTranscriptionProvider,
                     )
 

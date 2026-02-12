@@ -10,27 +10,27 @@ from typing import TYPE_CHECKING
 from loguru import logger
 
 if TYPE_CHECKING:
-    from nanobot.config.schema import ExecToolConfig
-    from nanobot.cron.service import CronService
+    from nanoclaw.config.schema import ExecToolConfig
+    from nanoclaw.cron.service import CronService
 
-from nanobot.agent.context import ContextBuilder
-from nanobot.agent.subagent import SubagentManager
-from nanobot.agent.tools.cron import CronTool
-from nanobot.agent.tools.filesystem import (
+from nanoclaw.agent.context import ContextBuilder
+from nanoclaw.agent.subagent import SubagentManager
+from nanoclaw.agent.tools.cron import CronTool
+from nanoclaw.agent.tools.filesystem import (
     EditFileTool,
     ListDirTool,
     ReadFileTool,
     WriteFileTool,
 )
-from nanobot.agent.tools.message import MessageTool
-from nanobot.agent.tools.registry import ToolRegistry
-from nanobot.agent.tools.shell import ExecTool
-from nanobot.agent.tools.spawn import SpawnTool
-from nanobot.agent.tools.web import WebFetchTool, WebSearchTool
-from nanobot.bus.events import InboundMessage, OutboundMessage
-from nanobot.bus.queue import MessageBus
-from nanobot.providers.base import LLMProvider
-from nanobot.session.manager import SessionManager
+from nanoclaw.agent.tools.message import MessageTool
+from nanoclaw.agent.tools.registry import ToolRegistry
+from nanoclaw.agent.tools.shell import ExecTool
+from nanoclaw.agent.tools.spawn import SpawnTool
+from nanoclaw.agent.tools.web import WebFetchTool, WebSearchTool
+from nanoclaw.bus.events import InboundMessage, OutboundMessage
+from nanoclaw.bus.queue import MessageBus
+from nanoclaw.providers.base import LLMProvider
+from nanoclaw.session.manager import SessionManager
 
 
 class AgentLoop:
@@ -61,7 +61,7 @@ class AgentLoop:
         context_window: int = 128000,
         compaction_threshold: float = 0.75,
     ):
-        from nanobot.config.schema import ExecToolConfig
+        from nanoclaw.config.schema import ExecToolConfig
 
         self.bus = bus
         self.provider = provider
@@ -160,7 +160,7 @@ class AgentLoop:
 
     async def _maybe_compact(self, messages: list[dict], prompt_tokens: int) -> list[dict]:
         """Summarize older messages when approaching context window limit."""
-        from nanobot.agent.compaction import (
+        from nanoclaw.agent.compaction import (
             apply_compaction,
             build_compaction_request,
             needs_compaction,

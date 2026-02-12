@@ -1,6 +1,6 @@
-# nanobot Skills
+# nanoclaw Skills
 
-This directory contains built-in skills that extend nanobot's capabilities.
+This directory contains built-in skills that extend nanoclaw's capabilities.
 
 ## Skill Format
 

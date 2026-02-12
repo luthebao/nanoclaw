@@ -4,15 +4,15 @@ import subprocess
 import textwrap
 from pathlib import Path
 
-from nanobot.daemon.base import ServiceBackend, ServiceInfo
+from nanoclaw.daemon.base import ServiceBackend, ServiceInfo
 
-UNIT_NAME = "nanobot-gateway"
+UNIT_NAME = "nanoclaw-gateway"
 UNIT_DIR = Path.home() / ".config" / "systemd" / "user"
 UNIT_PATH = UNIT_DIR / f"{UNIT_NAME}.service"
 
 
 class SystemdBackend(ServiceBackend):
-    """Manages a systemd user service for the nanobot gateway."""
+    """Manages a systemd user service for the nanoclaw gateway."""
 
     # ------------------------------------------------------------------
     # Install / Uninstall
@@ -29,7 +29,7 @@ class SystemdBackend(ServiceBackend):
 
         unit = textwrap.dedent(f"""\
             [Unit]
-            Description=Nanobot Gateway Service
+            Description=Nanoclaw Gateway Service
             After=network.target
 
             [Service]

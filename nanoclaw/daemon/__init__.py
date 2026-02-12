@@ -1,6 +1,6 @@
-"""Daemon/background service management for nanobot gateway."""
+"""Daemon/background service management for nanoclaw gateway."""
 
-from nanobot.daemon.base import ServiceBackend, ServiceInfo
-from nanobot.daemon.manager import DaemonManager
+from nanoclaw.daemon.base import ServiceBackend, ServiceInfo
+from nanoclaw.daemon.manager import DaemonManager
 
 __all__ = ["DaemonManager", "ServiceBackend", "ServiceInfo"]

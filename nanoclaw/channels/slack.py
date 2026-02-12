@@ -9,10 +9,10 @@ from slack_sdk.socket_mode.response import SocketModeResponse
 from slack_sdk.socket_mode.websockets import SocketModeClient
 from slack_sdk.web.async_client import AsyncWebClient
 
-from nanobot.bus.events import OutboundMessage
-from nanobot.bus.queue import MessageBus
-from nanobot.channels.base import BaseChannel
-from nanobot.config.schema import SlackConfig
+from nanoclaw.bus.events import OutboundMessage
+from nanoclaw.bus.queue import MessageBus
+from nanoclaw.channels.base import BaseChannel
+from nanoclaw.config.schema import SlackConfig
 
 
 class SlackChannel(BaseChannel):

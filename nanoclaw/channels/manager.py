@@ -7,12 +7,12 @@ from typing import TYPE_CHECKING, Any
 
 from loguru import logger
 
-from nanobot.bus.queue import MessageBus
-from nanobot.channels.base import BaseChannel
-from nanobot.config.schema import Config
+from nanoclaw.bus.queue import MessageBus
+from nanoclaw.channels.base import BaseChannel
+from nanoclaw.config.schema import Config
 
 if TYPE_CHECKING:
-    from nanobot.session.manager import SessionManager
+    from nanoclaw.session.manager import SessionManager
 
 
 class ChannelManager:
@@ -42,7 +42,7 @@ class ChannelManager:
         # Telegram channel
         if self.config.channels.telegram.enabled:
             try:
-                from nanobot.channels.telegram import TelegramChannel
+                from nanoclaw.channels.telegram import TelegramChannel
 
                 self.channels["telegram"] = TelegramChannel(
                     self.config.channels.telegram,
@@ -57,7 +57,7 @@ class ChannelManager:
         # WhatsApp channel
         if self.config.channels.whatsapp.enabled:
             try:
-                from nanobot.channels.whatsapp import WhatsAppChannel
+                from nanoclaw.channels.whatsapp import WhatsAppChannel
 
                 self.channels["whatsapp"] = WhatsAppChannel(self.config.channels.whatsapp, self.bus)
                 logger.info("WhatsApp channel enabled")
@@ -67,7 +67,7 @@ class ChannelManager:
         # Discord channel
         if self.config.channels.discord.enabled:
             try:
-                from nanobot.channels.discord import DiscordChannel
+                from nanoclaw.channels.discord import DiscordChannel
 
                 self.channels["discord"] = DiscordChannel(self.config.channels.discord, self.bus)
                 logger.info("Discord channel enabled")
@@ -77,7 +77,7 @@ class ChannelManager:
         # Feishu channel
         if self.config.channels.feishu.enabled:
             try:
-                from nanobot.channels.feishu import FeishuChannel
+                from nanoclaw.channels.feishu import FeishuChannel
 
                 self.channels["feishu"] = FeishuChannel(self.config.channels.feishu, self.bus)
                 logger.info("Feishu channel enabled")
@@ -87,7 +87,7 @@ class ChannelManager:
         # Mochat channel
         if self.config.channels.mochat.enabled:
             try:
-                from nanobot.channels.mochat import MochatChannel
+                from nanoclaw.channels.mochat import MochatChannel
 
                 self.channels["mochat"] = MochatChannel(self.config.channels.mochat, self.bus)
                 logger.info("Mochat channel enabled")
@@ -97,7 +97,7 @@ class ChannelManager:
         # DingTalk channel
         if self.config.channels.dingtalk.enabled:
             try:
-                from nanobot.channels.dingtalk import DingTalkChannel
+                from nanoclaw.channels.dingtalk import DingTalkChannel
 
                 self.channels["dingtalk"] = DingTalkChannel(self.config.channels.dingtalk, self.bus)
                 logger.info("DingTalk channel enabled")
@@ -107,7 +107,7 @@ class ChannelManager:
         # Email channel
         if self.config.channels.email.enabled:
             try:
-                from nanobot.channels.email import EmailChannel
+                from nanoclaw.channels.email import EmailChannel
 
                 self.channels["email"] = EmailChannel(self.config.channels.email, self.bus)
                 logger.info("Email channel enabled")
@@ -117,7 +117,7 @@ class ChannelManager:
         # Slack channel
         if self.config.channels.slack.enabled:
             try:
-                from nanobot.channels.slack import SlackChannel
+                from nanoclaw.channels.slack import SlackChannel
 
                 self.channels["slack"] = SlackChannel(self.config.channels.slack, self.bus)
                 logger.info("Slack channel enabled")
@@ -127,7 +127,7 @@ class ChannelManager:
         # QQ channel
         if self.config.channels.qq.enabled:
             try:
-                from nanobot.channels.qq import QQChannel
+                from nanoclaw.channels.qq import QQChannel
 
                 self.channels["qq"] = QQChannel(
                     self.config.channels.qq,

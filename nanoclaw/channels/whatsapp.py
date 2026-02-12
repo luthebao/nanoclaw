@@ -5,10 +5,10 @@ import json
 
 from loguru import logger
 
-from nanobot.bus.events import OutboundMessage
-from nanobot.bus.queue import MessageBus
-from nanobot.channels.base import BaseChannel
-from nanobot.config.schema import WhatsAppConfig
+from nanoclaw.bus.events import OutboundMessage
+from nanoclaw.bus.queue import MessageBus
+from nanoclaw.channels.base import BaseChannel
+from nanoclaw.config.schema import WhatsAppConfig
 
 
 class WhatsAppChannel(BaseChannel):

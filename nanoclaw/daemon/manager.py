@@ -6,11 +6,11 @@ import shutil
 import sys
 from pathlib import Path
 
-from nanobot.daemon.base import ServiceBackend, ServiceInfo
+from nanoclaw.daemon.base import ServiceBackend, ServiceInfo
 
 # Environment variable patterns to forward into the service
 _ENV_PATTERNS: list[str] = [
-    "NANOBOT_*",
+    "NANOCLAW_*",
     "OPENAI_*",
     "ANTHROPIC_*",
     "OPENROUTER_*",
@@ -37,7 +37,7 @@ class DaemonManager:
 
     def install(self) -> Path:
         """Generate and register the OS service. Returns path to service file."""
-        command = self._resolve_nanobot_command()
+        command = self._resolve_nanoclaw_command()
         env = self._collect_env()
         log_out, log_err = self._log_paths()
         log_out.parent.mkdir(parents=True, exist_ok=True)
@@ -49,7 +49,7 @@ class DaemonManager:
     def start(self) -> None:
         info = self._backend.get_info()
         if not info.installed:
-            raise RuntimeError("Service not installed. Run 'nanobot gateway install' first.")
+            raise RuntimeError("Service not installed. Run 'nanoclaw gateway install' first.")
         self._backend.start()
 
     def stop(self) -> None:
@@ -61,7 +61,7 @@ class DaemonManager:
     def restart(self) -> None:
         info = self._backend.get_info()
         if not info.installed:
-            raise RuntimeError("Service not installed. Run 'nanobot gateway install' first.")
+            raise RuntimeError("Service not installed. Run 'nanoclaw gateway install' first.")
         if info.running:
             self._backend.stop()
         self._backend.start()
@@ -84,21 +84,21 @@ class DaemonManager:
     def _detect_backend() -> ServiceBackend:
         system = platform.system()
         if system == "Darwin":
-            from nanobot.daemon.launchd import LaunchdBackend
+            from nanoclaw.daemon.launchd import LaunchdBackend
 
             return LaunchdBackend()
         if system == "Linux":
             if not shutil.which("systemctl"):
                 raise RuntimeError(
                     "systemctl not found. On this Linux system, use foreground mode: "
-                    "'nanobot gateway' (without subcommand)."
+                    "'nanoclaw gateway' (without subcommand)."
                 )
-            from nanobot.daemon.systemd import SystemdBackend
+            from nanoclaw.daemon.systemd import SystemdBackend
 
             return SystemdBackend()
         raise RuntimeError(
             f"Daemon mode is not supported on {system}. "
-            "Use foreground mode: 'nanobot gateway' (without subcommand)."
+            "Use foreground mode: 'nanoclaw gateway' (without subcommand)."
         )
 
     # ------------------------------------------------------------------
@@ -106,21 +106,21 @@ class DaemonManager:
     # ------------------------------------------------------------------
 
     @staticmethod
-    def _resolve_nanobot_command() -> list[str]:
-        """Find the best way to invoke ``nanobot gateway run``."""
-        # Strategy 1: look for nanobot binary next to current Python
+    def _resolve_nanoclaw_command() -> list[str]:
+        """Find the best way to invoke ``nanoclaw gateway run``."""
+        # Strategy 1: look for nanoclaw binary next to current Python
         bin_dir = Path(sys.executable).parent
-        candidate = bin_dir / "nanobot"
+        candidate = bin_dir / "nanoclaw"
         if candidate.is_file():
             return [str(candidate), "gateway", "run"]
 
         # Strategy 2: shutil.which
-        which = shutil.which("nanobot")
+        which = shutil.which("nanoclaw")
         if which:
             return [which, "gateway", "run"]
 
-        # Strategy 3: python -m nanobot
-        return [sys.executable, "-m", "nanobot", "gateway", "run"]
+        # Strategy 3: python -m nanoclaw
+        return [sys.executable, "-m", "nanoclaw", "gateway", "run"]
 
     # ------------------------------------------------------------------
     # Environment

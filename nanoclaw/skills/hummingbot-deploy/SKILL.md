@@ -2,7 +2,7 @@
 name: hummingbot-deploy
 description: Deploy Hummingbot trading infrastructure including API server, MCP server, and Condor Telegram bot. Use this skill when the user wants to install, deploy, set up, or configure Hummingbot.
 homepage: https://github.com/hummingbot/skills/tree/main/skills/hummingbot-deploy
-metadata: {"nanobot":{"emoji":"🤖","requires":{"bins":["docker","docker-compose","git","make"]}}}
+metadata: {"nanoclaw":{"emoji":"🤖","requires":{"bins":["docker","docker-compose","git","make"]}}}
 ---
 
 # hummingbot-deploy

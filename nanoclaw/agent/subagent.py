@@ -11,15 +11,15 @@ from typing import TYPE_CHECKING, Any
 from loguru import logger
 
 if TYPE_CHECKING:
-    from nanobot.config.schema import ExecToolConfig
+    from nanoclaw.config.schema import ExecToolConfig
 
-from nanobot.agent.tools.filesystem import EditFileTool, ListDirTool, ReadFileTool, WriteFileTool
-from nanobot.agent.tools.registry import ToolRegistry
-from nanobot.agent.tools.shell import ExecTool
-from nanobot.agent.tools.web import WebFetchTool, WebSearchTool
-from nanobot.bus.events import InboundMessage
-from nanobot.bus.queue import MessageBus
-from nanobot.providers.base import LLMProvider
+from nanoclaw.agent.tools.filesystem import EditFileTool, ListDirTool, ReadFileTool, WriteFileTool
+from nanoclaw.agent.tools.registry import ToolRegistry
+from nanoclaw.agent.tools.shell import ExecTool
+from nanoclaw.agent.tools.web import WebFetchTool, WebSearchTool
+from nanoclaw.bus.events import InboundMessage
+from nanoclaw.bus.queue import MessageBus
+from nanoclaw.providers.base import LLMProvider
 
 
 class SubagentManager:
@@ -41,7 +41,7 @@ class SubagentManager:
         exec_config: "ExecToolConfig | None" = None,
         restrict_to_workspace: bool = False,
     ):
-        from nanobot.config.schema import ExecToolConfig
+        from nanoclaw.config.schema import ExecToolConfig
 
         self.provider = provider
         self.workspace = workspace

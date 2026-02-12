@@ -1,4 +1,4 @@
-"""CLI commands for nanobot."""
+"""CLI commands for nanoclaw."""
 
 import asyncio
 import os
@@ -19,11 +19,11 @@ from rich.markdown import Markdown
 from rich.table import Table
 from rich.text import Text
 
-from nanobot import __logo__, __version__
+from nanoclaw import __logo__, __version__
 
 app = typer.Typer(
-    name="nanobot",
-    help=f"{__logo__} nanobot - Personal AI Assistant",
+    name="nanoclaw",
+    help=f"{__logo__} nanoclaw - Personal AI Assistant",
     no_args_is_help=True,
 )
 
@@ -105,7 +105,7 @@ def _print_agent_response(response: str, render_markdown: bool) -> None:
     content = response or ""
     body = Markdown(content) if render_markdown else Text(content)
     console.print()
-    console.print(f"[cyan]{__logo__} nanobot[/cyan]")
+    console.print(f"[cyan]{__logo__} nanoclaw[/cyan]")
     console.print(body)
     console.print()
 
@@ -136,7 +136,7 @@ async def _read_interactive_input_async() -> str:
 
 def version_callback(value: bool):
     if value:
-        console.print(f"{__logo__} nanobot v{__version__}")
+        console.print(f"{__logo__} nanoclaw v{__version__}")
         raise typer.Exit()
 
 
@@ -144,7 +144,7 @@ def version_callback(value: bool):
 def main(
     version: bool = typer.Option(None, "--version", "-v", callback=version_callback, is_eager=True),
 ):
-    """nanobot - Personal AI Assistant."""
+    """nanoclaw - Personal AI Assistant."""
     pass
 
 
@@ -168,10 +168,10 @@ def _step_action(title: str, desc: str) -> bool:
 
 @app.command()
 def onboard():
-    """Initialize nanobot configuration and workspace."""
-    from nanobot.config.loader import get_config_path, save_config
-    from nanobot.config.schema import Config
-    from nanobot.utils.helpers import get_workspace_path
+    """Initialize nanoclaw configuration and workspace."""
+    from nanoclaw.config.loader import get_config_path, save_config
+    from nanoclaw.config.schema import Config
+    from nanoclaw.utils.helpers import get_workspace_path
 
     config_path = get_config_path()
 
@@ -184,7 +184,7 @@ def onboard():
     config = Config()
 
     # Interactive step-by-step configuration
-    console.print(f"\n{__logo__} Configure your nanobot:\n")
+    console.print(f"\n{__logo__} Configure your nanoclaw:\n")
 
     steps = [
         ("Step 1/5: Agents", "Model, workspace, defaults", _configure_agents),
@@ -211,13 +211,13 @@ def onboard():
     # Create default bootstrap files
     _create_workspace_templates(workspace)
 
-    console.print(f"\n{__logo__} nanobot is ready!")
+    console.print(f"\n{__logo__} nanoclaw is ready!")
     console.print("\nNext steps:")
     console.print("  1. Add your API key to [cyan]~/.nanobot/config.json[/cyan]")
     console.print("     Get one at: https://openrouter.ai/keys")
-    console.print('  2. Chat: [cyan]nanobot agent -m "Hello!"[/cyan]')
+    console.print('  2. Chat: [cyan]nanoclaw agent -m "Hello!"[/cyan]')
     console.print(
-        "\n[dim]Want Telegram/WhatsApp? See: https://github.com/HKUDS/nanobot#-chat-apps[/dim]"
+        "\n[dim]Want Telegram/WhatsApp? See: https://github.com/luthebao/nanoclaw#-chat-apps[/dim]"
     )
 
 
@@ -292,7 +292,7 @@ def _configure_channels(config):
 
 def _configure_providers(config):
     """Prompt for provider API keys via sub-menu."""
-    from nanobot.providers.registry import PROVIDERS
+    from nanoclaw.providers.registry import PROVIDERS
 
     while True:
         choices = []
@@ -352,7 +352,7 @@ You are a helpful AI assistant. Be concise, accurate, and friendly.
 """,
         "SOUL.md": """# Soul
 
-I am nanobot, a lightweight AI assistant.
+I am nanoclaw, a lightweight AI assistant.
 
 ## Personality
 
@@ -414,7 +414,7 @@ This file stores important information that should persist across sessions.
     skills_dir.mkdir(exist_ok=True)
 
     # Copy built-in skills to workspace (skip existing to preserve customizations)
-    from nanobot.agent.skills import BUILTIN_SKILLS_DIR
+    from nanoclaw.agent.skills import BUILTIN_SKILLS_DIR
 
     if BUILTIN_SKILLS_DIR.exists():
         for skill_dir in BUILTIN_SKILLS_DIR.iterdir():
@@ -427,7 +427,7 @@ This file stores important information that should persist across sessions.
 
 def _make_provider(config):
     """Create LiteLLMProvider from config. Exits if no API key found."""
-    from nanobot.providers.litellm_provider import LiteLLMProvider
+    from nanoclaw.providers.litellm_provider import LiteLLMProvider
 
     p = config.get_provider()
     model = config.agents.defaults.model
@@ -448,27 +448,27 @@ def _make_provider(config):
 # Gateway / Server
 # ============================================================================
 
-gateway_app = typer.Typer(invoke_without_command=True, help="Manage the nanobot gateway service")
+gateway_app = typer.Typer(invoke_without_command=True, help="Manage the nanoclaw gateway service")
 app.add_typer(gateway_app, name="gateway")
 
 
 def _run_gateway_foreground(port: int, verbose: bool) -> None:
     """Start the gateway in the foreground (original behavior)."""
-    from nanobot.agent.loop import AgentLoop
-    from nanobot.bus.queue import MessageBus
-    from nanobot.channels.manager import ChannelManager
-    from nanobot.config.loader import get_data_dir, load_config
-    from nanobot.cron.service import CronService
-    from nanobot.cron.types import CronJob
-    from nanobot.heartbeat.service import HeartbeatService
-    from nanobot.session.manager import SessionManager
+    from nanoclaw.agent.loop import AgentLoop
+    from nanoclaw.bus.queue import MessageBus
+    from nanoclaw.channels.manager import ChannelManager
+    from nanoclaw.config.loader import get_data_dir, load_config
+    from nanoclaw.cron.service import CronService
+    from nanoclaw.cron.types import CronJob
+    from nanoclaw.heartbeat.service import HeartbeatService
+    from nanoclaw.session.manager import SessionManager
 
     if verbose:
         import logging
 
         logging.basicConfig(level=logging.DEBUG)
 
-    console.print(f"{__logo__} Starting nanobot gateway on port {port}...")
+    console.print(f"{__logo__} Starting nanoclaw gateway on port {port}...")
 
     config = load_config()
     bus = MessageBus()
@@ -505,7 +505,7 @@ def _run_gateway_foreground(port: int, verbose: bool) -> None:
             chat_id=job.payload.to or "direct",
         )
         if job.payload.deliver and job.payload.to:
-            from nanobot.bus.events import OutboundMessage
+            from nanoclaw.bus.events import OutboundMessage
 
             await bus.publish_outbound(
                 OutboundMessage(
@@ -572,7 +572,7 @@ def gateway_callback(
     port: int = typer.Option(18790, "--port", "-p", help="Gateway port"),
     verbose: bool = typer.Option(False, "--verbose", "-v", help="Verbose output"),
 ):
-    """Start the nanobot gateway (foreground by default)."""
+    """Start the nanoclaw gateway (foreground by default)."""
     ctx.ensure_object(dict)
     ctx.obj["port"] = port
     ctx.obj["verbose"] = verbose
@@ -593,7 +593,7 @@ def gateway_install():
         dm = _get_daemon_manager()
         service_file = dm.install()
         console.print(f"[green]✓[/green] Service installed: {service_file}")
-        console.print("Start with: [cyan]nanobot gateway start[/cyan]")
+        console.print("Start with: [cyan]nanoclaw gateway start[/cyan]")
     except RuntimeError as e:
         console.print(f"[red]Error:[/red] {e}")
         raise typer.Exit(1)
@@ -705,8 +705,8 @@ def gateway_logs(
 
 def _get_daemon_manager():
     """Create a DaemonManager, loading config for env_passthrough."""
-    from nanobot.config.loader import load_config
-    from nanobot.daemon import DaemonManager
+    from nanoclaw.config.loader import load_config
+    from nanoclaw.daemon import DaemonManager
 
     config = load_config()
     return DaemonManager(extra_env_passthrough=config.daemon.env_passthrough)
@@ -725,15 +725,15 @@ def agent(
         True, "--markdown/--no-markdown", help="Render assistant output as Markdown"
     ),
     logs: bool = typer.Option(
-        False, "--logs/--no-logs", help="Show nanobot runtime logs during chat"
+        False, "--logs/--no-logs", help="Show nanoclaw runtime logs during chat"
     ),
 ):
     """Interact with the agent directly."""
     from loguru import logger
 
-    from nanobot.agent.loop import AgentLoop
-    from nanobot.bus.queue import MessageBus
-    from nanobot.config.loader import load_config
+    from nanoclaw.agent.loop import AgentLoop
+    from nanoclaw.bus.queue import MessageBus
+    from nanoclaw.config.loader import load_config
 
     config = load_config()
 
@@ -741,9 +741,9 @@ def agent(
     provider = _make_provider(config)
 
     if logs:
-        logger.enable("nanobot")
+        logger.enable("nanoclaw")
     else:
-        logger.disable("nanobot")
+        logger.disable("nanoclaw")
 
     agent_loop = AgentLoop(
         bus=bus,
@@ -763,7 +763,7 @@ def agent(
 
             return nullcontext()
         # Animated spinner is safe to use with prompt_toolkit input handling
-        return console.status("[dim]nanobot is thinking...[/dim]", spinner="dots")
+        return console.status("[dim]nanoclaw is thinking...[/dim]", spinner="dots")
 
     if message:
         # Single message mode
@@ -828,7 +828,7 @@ app.add_typer(channels_app, name="channels")
 @channels_app.command("status")
 def channels_status():
     """Show channel status."""
-    from nanobot.config.loader import load_config
+    from nanoclaw.config.loader import load_config
 
     config = load_config()
 
@@ -885,7 +885,7 @@ def _get_bridge_dir() -> Path:
         raise typer.Exit(1)
 
     # Find source bridge: first check package data, then source dir
-    pkg_bridge = Path(__file__).parent.parent / "bridge"  # nanobot/bridge (installed)
+    pkg_bridge = Path(__file__).parent.parent / "bridge"  # nanoclaw/bridge (installed)
     src_bridge = Path(__file__).parent.parent.parent / "bridge"  # repo root/bridge (dev)
 
     source = None
@@ -896,7 +896,7 @@ def _get_bridge_dir() -> Path:
 
     if not source:
         console.print("[red]Bridge source not found.[/red]")
-        console.print("Try reinstalling: pip install --force-reinstall nanobot")
+        console.print("Try reinstalling: pip install --force-reinstall nanoclaw-ai")
         raise typer.Exit(1)
 
     console.print(f"{__logo__} Setting up bridge...")
@@ -956,8 +956,8 @@ def cron_list(
     all: bool = typer.Option(False, "--all", "-a", help="Include disabled jobs"),
 ):
     """List scheduled jobs."""
-    from nanobot.config.loader import get_data_dir
-    from nanobot.cron.service import CronService
+    from nanoclaw.config.loader import get_data_dir
+    from nanoclaw.cron.service import CronService
 
     store_path = get_data_dir() / "cron" / "jobs.json"
     service = CronService(store_path)
@@ -1015,9 +1015,9 @@ def cron_add(
     ),
 ):
     """Add a scheduled job."""
-    from nanobot.config.loader import get_data_dir
-    from nanobot.cron.service import CronService
-    from nanobot.cron.types import CronSchedule
+    from nanoclaw.config.loader import get_data_dir
+    from nanoclaw.cron.service import CronService
+    from nanoclaw.cron.types import CronSchedule
 
     # Determine schedule type
     if every:
@@ -1053,8 +1053,8 @@ def cron_remove(
     job_id: str = typer.Argument(..., help="Job ID to remove"),
 ):
     """Remove a scheduled job."""
-    from nanobot.config.loader import get_data_dir
-    from nanobot.cron.service import CronService
+    from nanoclaw.config.loader import get_data_dir
+    from nanoclaw.cron.service import CronService
 
     store_path = get_data_dir() / "cron" / "jobs.json"
     service = CronService(store_path)
@@ -1071,8 +1071,8 @@ def cron_enable(
     disable: bool = typer.Option(False, "--disable", help="Disable instead of enable"),
 ):
     """Enable or disable a job."""
-    from nanobot.config.loader import get_data_dir
-    from nanobot.cron.service import CronService
+    from nanoclaw.config.loader import get_data_dir
+    from nanoclaw.cron.service import CronService
 
     store_path = get_data_dir() / "cron" / "jobs.json"
     service = CronService(store_path)
@@ -1091,8 +1091,8 @@ def cron_run(
     force: bool = typer.Option(False, "--force", "-f", help="Run even if disabled"),
 ):
     """Manually run a job."""
-    from nanobot.config.loader import get_data_dir
-    from nanobot.cron.service import CronService
+    from nanoclaw.config.loader import get_data_dir
+    from nanoclaw.cron.service import CronService
 
     store_path = get_data_dir() / "cron" / "jobs.json"
     service = CronService(store_path)
@@ -1113,14 +1113,14 @@ def cron_run(
 
 @app.command()
 def status():
-    """Show nanobot status."""
-    from nanobot.config.loader import get_config_path, load_config
+    """Show nanoclaw status."""
+    from nanoclaw.config.loader import get_config_path, load_config
 
     config_path = get_config_path()
     config = load_config()
     workspace = config.workspace_path
 
-    console.print(f"{__logo__} nanobot Status\n")
+    console.print(f"{__logo__} nanoclaw Status\n")
 
     console.print(
         f"Config: {config_path} {'[green]✓[/green]' if config_path.exists() else '[red]✗[/red]'}"
@@ -1130,7 +1130,7 @@ def status():
     )
 
     if config_path.exists():
-        from nanobot.providers.registry import PROVIDERS
+        from nanoclaw.providers.registry import PROVIDERS
 
         console.print(f"Model: {config.agents.defaults.model}")
 

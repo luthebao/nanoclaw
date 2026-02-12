@@ -6,10 +6,10 @@ from typing import TYPE_CHECKING
 
 from loguru import logger
 
-from nanobot.bus.events import OutboundMessage
-from nanobot.bus.queue import MessageBus
-from nanobot.channels.base import BaseChannel
-from nanobot.config.schema import QQConfig
+from nanoclaw.bus.events import OutboundMessage
+from nanoclaw.bus.queue import MessageBus
+from nanoclaw.channels.base import BaseChannel
+from nanoclaw.config.schema import QQConfig
 
 if TYPE_CHECKING:
     import botpy

@@ -284,7 +284,7 @@ class DaemonConfig(BaseModel):
 
 
 class Config(BaseSettings):
-    """Root configuration for nanobot."""
+    """Root configuration for nanoclaw."""
 
     agents: AgentsConfig = Field(default_factory=AgentsConfig)
     channels: ChannelsConfig = Field(default_factory=ChannelsConfig)
@@ -304,7 +304,7 @@ class Config(BaseSettings):
         self, model: str | None = None
     ) -> tuple["ProviderConfig | None", str | None]:
         """Match provider config and its registry name. Returns (config, spec_name)."""
-        from nanobot.providers.registry import PROVIDERS
+        from nanoclaw.providers.registry import PROVIDERS
 
         model_lower = (model or self.agents.defaults.model).lower()
 
@@ -338,7 +338,7 @@ class Config(BaseSettings):
 
     def get_api_base(self, model: str | None = None) -> str | None:
         """Get API base URL for the given model. Applies default URLs for known gateways."""
-        from nanobot.providers.registry import find_by_name
+        from nanoclaw.providers.registry import find_by_name
 
         p, name = self._match_provider(model)
         if p and p.api_base:
@@ -353,5 +353,5 @@ class Config(BaseSettings):
         return None
 
     model_config = SettingsConfigDict(
-        env_prefix="NANOBOT_", env_nested_delimiter="__", populate_by_name=True
+        env_prefix="NANOCLAW_", env_nested_delimiter="__", populate_by_name=True
     )

@@ -27,8 +27,8 @@ uv add <package>
 uv remove <package>
 
 # Run the CLI
-uv run nanobot agent -m "Hello"
-uv run nanobot gateway
+uv run nanoclaw agent -m "Hello"
+uv run nanoclaw gateway
 ```
 
 ## Architecture
@@ -62,7 +62,7 @@ Tools extend `Tool` ABC (`agent/tools/base.py`) with `name`, `description`, `par
 
 ### Skills
 
-YAML frontmatter + Markdown in `nanobot/skills/` and `workspace/skills/`. Progressively loaded: summaries in system prompt, full content loaded by agent via `read_file`. `always: true` skills are inlined into the system prompt.
+YAML frontmatter + Markdown in `nanoclaw/skills/` and `workspace/skills/`. Progressively loaded: summaries in system prompt, full content loaded by agent via `read_file`. `always: true` skills are inlined into the system prompt.
 
 ### Sessions
 
@@ -76,7 +76,7 @@ Spawned via `spawn` tool. Isolated context with focused system prompt. No messag
 
 - Python ≥3.11, type hints throughout, Pydantic models for config
 - Ruff: line-length 100, rules E/F/I/N/W, E501 ignored
-- Config: `~/.nanobot/config.json`, env vars with `NANOBOT_` prefix
+- Config: `~/.nanobot/config.json`, env vars with `NANOCLAW_` prefix
 - Workspace: `~/.nanobot/workspace/` (customizable)
 - All channel integrations implement `BaseChannel` with `start()`, `stop()`, `send()`
 - Provider additions go through `ProviderSpec` in the registry — no if-elif chains

@@ -8,10 +8,10 @@ from typing import TYPE_CHECKING, Any
 import httpx
 from loguru import logger
 
-from nanobot.bus.events import OutboundMessage
-from nanobot.bus.queue import MessageBus
-from nanobot.channels.base import BaseChannel
-from nanobot.config.schema import DingTalkConfig
+from nanoclaw.bus.events import OutboundMessage
+from nanoclaw.bus.queue import MessageBus
+from nanoclaw.channels.base import BaseChannel
+from nanoclaw.config.schema import DingTalkConfig
 
 if TYPE_CHECKING:
     from dingtalk_stream import AckMessage, CallbackMessage

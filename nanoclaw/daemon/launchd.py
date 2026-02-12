@@ -4,14 +4,14 @@ import plistlib
 import subprocess
 from pathlib import Path
 
-from nanobot.daemon.base import ServiceBackend, ServiceInfo
+from nanoclaw.daemon.base import ServiceBackend, ServiceInfo
 
-LABEL = "com.nanobot.gateway"
+LABEL = "com.nanoclaw.gateway"
 PLIST_PATH = Path.home() / "Library" / "LaunchAgents" / f"{LABEL}.plist"
 
 
 class LaunchdBackend(ServiceBackend):
-    """Manages a macOS LaunchAgent plist for the nanobot gateway."""
+    """Manages a macOS LaunchAgent plist for the nanoclaw gateway."""
 
     # ------------------------------------------------------------------
     # Install / Uninstall
