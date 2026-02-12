@@ -1,0 +1,9 @@
+services:
+  gateway:
+    build: .
+    command: ["gateway"]
+    ports:
+      - "18790:18790"
+    volumes:
+      - ~/.nanobot:/root/.nanobot
+    restart: unless-stopped
