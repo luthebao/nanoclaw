@@ -388,7 +388,8 @@ Information about the user goes here.
     memory_dir.mkdir(exist_ok=True)
     memory_file = memory_dir / "MEMORY.md"
     if not memory_file.exists():
-        memory_file.write_text("""# Long-term Memory
+        memory_file.write_text(
+            """# Long-term Memory
 
 This file stores important information that should persist across sessions.
 
@@ -403,7 +404,8 @@ This file stores important information that should persist across sessions.
 ## Important Notes
 
 (Things to remember)
-""")
+"""
+        )
         console.print("  [dim]Created memory/MEMORY.md[/dim]")
 
     # Create skills directory for custom user skills

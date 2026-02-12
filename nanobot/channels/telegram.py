@@ -42,8 +42,6 @@ def _markdown_to_telegram_html(text: str) -> str:
 
     text = re.sub(r"```[\w]*\n?([\s\S]*?)```", save_code_block, text)
 
-    text = re.sub(r"```[\w]*\n?([\s\S]*?)```", save_code_block, text)
-
     # 2. Extract and protect inline code
     inline_codes: list[str] = []
 
@@ -53,16 +51,10 @@ def _markdown_to_telegram_html(text: str) -> str:
 
     text = re.sub(r"`([^`]+)`", save_inline_code, text)
 
-    text = re.sub(r"`([^`]+)`", save_inline_code, text)
-
     # 3. Headers # Title -> just the title text
     text = re.sub(r"^#{1,6}\s+(.+)$", r"\1", text, flags=re.MULTILINE)
 
-    text = re.sub(r"^#{1,6}\s+(.+)$", r"\1", text, flags=re.MULTILINE)
-
     # 4. Blockquotes > text -> just the text (before HTML escaping)
-    text = re.sub(r"^>\s*(.*)$", r"\1", text, flags=re.MULTILINE)
-
     text = re.sub(r"^>\s*(.*)$", r"\1", text, flags=re.MULTILINE)
 
     # 5. Escape HTML special characters
@@ -71,28 +63,17 @@ def _markdown_to_telegram_html(text: str) -> str:
     # 6. Links [text](url) - must be before bold/italic to handle nested cases
     text = re.sub(r"\[([^\]]+)\]\(([^)]+)\)", r'<a href="\2">\1</a>', text)
 
-    text = re.sub(r"\[([^\]]+)\]\(([^)]+)\)", r'<a href="\2">\1</a>', text)
-
     # 7. Bold **text** or __text__
-    text = re.sub(r"\*\*(.+?)\*\*", r"<b>\1</b>", text)
-    text = re.sub(r"__(.+?)__", r"<b>\1</b>", text)
-
     text = re.sub(r"\*\*(.+?)\*\*", r"<b>\1</b>", text)
     text = re.sub(r"__(.+?)__", r"<b>\1</b>", text)
 
     # 8. Italic _text_ (avoid matching inside words like some_var_name)
     text = re.sub(r"(?<![a-zA-Z0-9])_([^_]+)_(?![a-zA-Z0-9])", r"<i>\1</i>", text)
 
-    text = re.sub(r"(?<![a-zA-Z0-9])_([^_]+)_(?![a-zA-Z0-9])", r"<i>\1</i>", text)
-
     # 9. Strikethrough ~~text~~
     text = re.sub(r"~~(.+?)~~", r"<s>\1</s>", text)
 
-    text = re.sub(r"~~(.+?)~~", r"<s>\1</s>", text)
-
     # 10. Bullet lists - item -> • item
-    text = re.sub(r"^[-*]\s+", "• ", text, flags=re.MULTILINE)
-
     text = re.sub(r"^[-*]\s+", "• ", text, flags=re.MULTILINE)
 
     # 11. Restore inline code with HTML tags
@@ -243,14 +224,12 @@ class TelegramChannel(BaseChannel):
             # Convert markdown to Telegram HTML
             html_content = _markdown_to_telegram_html(msg.content)
             await self._app.bot.send_message(chat_id=chat_id, text=html_content, parse_mode="HTML")
-            await self._app.bot.send_message(chat_id=chat_id, text=html_content, parse_mode="HTML")
         except ValueError:
             logger.error(f"Invalid chat_id: {msg.chat_id}")
         except Exception as e:
             # Fallback to plain text if HTML parsing fails
             logger.warning(f"HTML parse failed, falling back to plain text: {e}")
             try:
-                await self._app.bot.send_message(chat_id=int(msg.chat_id), text=msg.content)
                 await self._app.bot.send_message(chat_id=int(msg.chat_id), text=msg.content)
             except Exception as e2:
                 logger.error(f"Error sending Telegram message: {e2}")
@@ -350,8 +329,6 @@ class TelegramChannel(BaseChannel):
         if media_file and media_type and self._app:
             try:
                 file = await self._app.bot.get_file(media_file.file_id)
-                ext = self._get_extension(media_type, getattr(media_file, "mime_type", None))
-
                 ext = self._get_extension(media_type, getattr(media_file, "mime_type", None))
 
                 # Save to workspace/media/

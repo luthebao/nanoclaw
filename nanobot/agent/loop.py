@@ -13,10 +13,6 @@ if TYPE_CHECKING:
     from nanobot.config.schema import ExecToolConfig
     from nanobot.cron.service import CronService
 
-if TYPE_CHECKING:
-    from nanobot.config.schema import ExecToolConfig
-    from nanobot.cron.service import CronService
-
 from nanobot.agent.context import ContextBuilder
 from nanobot.agent.subagent import SubagentManager
 from nanobot.agent.tools.cron import CronTool
@@ -79,9 +75,6 @@ class AgentLoop:
         self.context_window = context_window
         self.compaction_threshold = compaction_threshold
 
-        self.context_window = context_window
-        self.compaction_threshold = compaction_threshold
-
         self.context = ContextBuilder(workspace)
         self.sessions = session_manager or SessionManager(workspace)
         self.tools = ToolRegistry()
@@ -116,14 +109,6 @@ class AgentLoop:
             )
         )
 
-        self.tools.register(
-            ExecTool(
-                working_dir=str(self.workspace),
-                timeout=self.exec_config.timeout,
-                restrict_to_workspace=self.restrict_to_workspace,
-            )
-        )
-
         # Web tools
         self.tools.register(WebSearchTool(api_key=self.brave_api_key))
         self.tools.register(WebFetchTool())
@@ -150,8 +135,6 @@ class AgentLoop:
                 # Wait for next message
                 msg = await asyncio.wait_for(self.bus.consume_inbound(), timeout=1.0)
 
-                msg = await asyncio.wait_for(self.bus.consume_inbound(), timeout=1.0)
-
                 # Process it
                 try:
                     response = await self._process_message(msg)
@@ -160,13 +143,6 @@ class AgentLoop:
                 except Exception as e:
                     logger.error(f"Error processing message: {e}")
                     # Send error response
-                    await self.bus.publish_outbound(
-                        OutboundMessage(
-                            channel=msg.channel,
-                            chat_id=msg.chat_id,
-                            content=f"Sorry, I encountered an error: {str(e)}",
-                        )
-                    )
                     await self.bus.publish_outbound(
                         OutboundMessage(
                             channel=msg.channel,
@@ -287,7 +263,6 @@ class AgentLoop:
                     messages,
                     response.content,
                     tool_call_dicts,
-                    messages,
                 )
 
                 # Execute tools
@@ -404,7 +379,6 @@ class AgentLoop:
                     messages,
                     response.content,
                     tool_call_dicts,
-                    messages,
                 )
 
                 for tool_call in response.tool_calls:
@@ -458,8 +432,6 @@ class AgentLoop:
         Returns:
             The agent's response.
         """
-        msg = InboundMessage(channel=channel, sender_id="user", chat_id=chat_id, content=content)
-
         msg = InboundMessage(channel=channel, sender_id="user", chat_id=chat_id, content=content)
 
         response = await self._process_message(msg)
