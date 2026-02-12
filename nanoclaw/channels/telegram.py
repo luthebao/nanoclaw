@@ -403,12 +403,15 @@ class TelegramChannel(BaseChannel):
         """Repeatedly send 'typing' action until cancelled."""
         try:
             while self._app:
-                await self._app.bot.send_chat_action(chat_id=int(chat_id), action="typing")
+                try:
+                    await self._app.bot.send_chat_action(chat_id=int(chat_id), action="typing")
+                except asyncio.CancelledError:
+                    raise
+                except Exception as e:
+                    logger.debug(f"Typing indicator error for {chat_id}: {e}")
                 await asyncio.sleep(4)
         except asyncio.CancelledError:
             pass
-        except Exception as e:
-            logger.debug(f"Typing indicator stopped for {chat_id}: {e}")
 
     async def _on_error(self, update: object, context: ContextTypes.DEFAULT_TYPE) -> None:
         """Log polling / handler errors instead of silently swallowing them."""

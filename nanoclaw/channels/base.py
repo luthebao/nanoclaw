@@ -58,12 +58,13 @@ class BaseChannel(ABC):
         """
         pass
 
-    def is_allowed(self, sender_id: str) -> bool:
+    def is_allowed(self, sender_id: str, chat_id: str | None = None) -> bool:
         """
-        Check if a sender is allowed to use this bot.
+        Check if a sender or chat is allowed to use this bot.
 
         Args:
             sender_id: The sender's identifier.
+            chat_id: Optional chat/channel identifier.
 
         Returns:
             True if allowed, False otherwise.
@@ -81,6 +82,8 @@ class BaseChannel(ABC):
             for part in sender_str.split("|"):
                 if part and part in allow_list:
                     return True
+        if chat_id and str(chat_id) in allow_list:
+            return True
         return False
 
     async def _handle_message(
@@ -103,7 +106,7 @@ class BaseChannel(ABC):
             media: Optional list of media URLs.
             metadata: Optional channel-specific metadata.
         """
-        if not self.is_allowed(sender_id):
+        if not self.is_allowed(sender_id, chat_id):
             logger.warning(
                 f"Access denied for sender {sender_id} on channel {self.name}. "
                 f"Add them to allowFrom list in config to grant access."
