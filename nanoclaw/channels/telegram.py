@@ -120,6 +120,7 @@ class TelegramChannel(BaseChannel):
         self.groq_api_key = groq_api_key
         self.session_manager = session_manager
         self._app: Application | None = None
+        self._bot_username: str | None = None
         self._chat_ids: dict[str, int] = {}  # Map sender_id to chat_id for replies
         self._typing_tasks: dict[str, asyncio.Task] = {}  # chat_id -> typing loop task
 
@@ -174,6 +175,7 @@ class TelegramChannel(BaseChannel):
 
         # Get bot info and register command menu
         bot_info = await self._app.bot.get_me()
+        self._bot_username = bot_info.username
         logger.info(f"Telegram bot @{bot_info.username} connected")
 
         try:
@@ -234,9 +236,22 @@ class TelegramChannel(BaseChannel):
             except Exception as e2:
                 logger.error(f"Error sending Telegram message: {e2}")
 
+    def _check_command_allowed(self, update: Update) -> bool:
+        """Return True if the command sender is allowed."""
+        if not update.message or not update.effective_user:
+            return False
+        user = update.effective_user
+        sender_id = str(user.id)
+        if user.username:
+            sender_id = f"{sender_id}|{user.username}"
+        chat_id = str(update.message.chat_id)
+        return self.is_allowed(sender_id, chat_id)
+
     async def _on_start(self, update: Update, context: ContextTypes.DEFAULT_TYPE) -> None:
         """Handle /start command."""
         if not update.message or not update.effective_user:
+            return
+        if not self._check_command_allowed(update):
             return
 
         user = update.effective_user
@@ -249,6 +264,8 @@ class TelegramChannel(BaseChannel):
     async def _on_reset(self, update: Update, context: ContextTypes.DEFAULT_TYPE) -> None:
         """Handle /reset command — clear conversation history."""
         if not update.message or not update.effective_user:
+            return
+        if not self._check_command_allowed(update):
             return
 
         chat_id = str(update.message.chat_id)
@@ -271,6 +288,8 @@ class TelegramChannel(BaseChannel):
         """Handle /help command — show available commands."""
         if not update.message:
             return
+        if not self._check_command_allowed(update):
+            return
 
         help_text = (
             "🐈 <b>nanoclaw commands</b>\n\n"
@@ -280,6 +299,23 @@ class TelegramChannel(BaseChannel):
             "Just send me a text message to chat!"
         )
         await update.message.reply_text(help_text, parse_mode="HTML")
+
+    def _is_mentioned(self, message) -> bool:
+        """Check if the bot is @mentioned in a message."""
+        if not self._bot_username:
+            return False
+        bot_tag = f"@{self._bot_username.lower()}"
+        # Check entities for mention targeting this bot
+        if message.entities:
+            for entity in message.entities:
+                if entity.type == "mention":
+                    text = message.text[entity.offset : entity.offset + entity.length]
+                    if text.lower() == bot_tag:
+                        return True
+        # Fallback: check raw text
+        if message.text and bot_tag in message.text.lower():
+            return True
+        return False
 
     async def _on_message(self, update: Update, context: ContextTypes.DEFAULT_TYPE) -> None:
         """Handle incoming messages (text, photos, voice, documents)."""
@@ -295,6 +331,19 @@ class TelegramChannel(BaseChannel):
         if user.username:
             sender_id = f"{sender_id}|{user.username}"
 
+        # In groups: require @mention AND chat_id in allow_from
+        if message.chat.type != "private":
+            if not self._is_mentioned(message):
+                return
+            if not self.is_allowed(sender_id, str(chat_id)):
+                logger.debug(f"Group {chat_id} not in allow_from, ignoring")
+                return
+        else:
+            # Private chats: check sender is allowed before any processing
+            if not self.is_allowed(sender_id, str(chat_id)):
+                logger.debug(f"Sender {sender_id} not in allow_from, ignoring DM")
+                return
+
         # Store chat_id for replies
         self._chat_ids[sender_id] = chat_id
 
@@ -302,9 +351,18 @@ class TelegramChannel(BaseChannel):
         content_parts = []
         media_paths = []
 
-        # Text content
+        # Text content (strip @botname from group messages)
         if message.text:
-            content_parts.append(message.text)
+            text = message.text
+            if self._bot_username:
+                text = re.sub(
+                    rf"@{re.escape(self._bot_username)}\s*",
+                    "",
+                    text,
+                    flags=re.IGNORECASE,
+                ).strip()
+            if text:
+                content_parts.append(text)
         if message.caption:
             content_parts.append(message.caption)
 
