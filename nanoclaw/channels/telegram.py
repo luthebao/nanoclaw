@@ -91,6 +91,46 @@ def _markdown_to_telegram_html(text: str) -> str:
     return text
 
 
+TELEGRAM_MAX_LENGTH = 4096
+
+
+def _split_message(text: str, max_length: int = TELEGRAM_MAX_LENGTH) -> list[str]:
+    """
+    Split a message into chunks that fit within Telegram's character limit.
+
+    Splits at natural boundaries in priority order:
+    1. Double newline (paragraph break)
+    2. Single newline
+    3. Space
+    4. Hard cut at max_length
+    """
+    if len(text) <= max_length:
+        return [text]
+
+    chunks: list[str] = []
+    while text:
+        if len(text) <= max_length:
+            chunks.append(text)
+            break
+
+        # Try splitting at natural boundaries (search backwards from the limit)
+        split_at = -1
+        for sep in ("\n\n", "\n", " "):
+            pos = text.rfind(sep, 0, max_length)
+            if pos > 0:
+                split_at = pos
+                break
+
+        if split_at <= 0:
+            # Hard cut as last resort
+            split_at = max_length
+
+        chunks.append(text[:split_at])
+        text = text[split_at:].lstrip("\n")  # strip leading newlines from next chunk
+
+    return chunks
+
+
 class TelegramChannel(BaseChannel):
     """
     Telegram channel using long polling.
@@ -221,20 +261,35 @@ class TelegramChannel(BaseChannel):
         self._stop_typing(msg.chat_id)
 
         try:
-            # chat_id should be the Telegram chat ID (integer)
             chat_id = int(msg.chat_id)
-            # Convert markdown to Telegram HTML
-            html_content = _markdown_to_telegram_html(msg.content)
-            await self._app.bot.send_message(chat_id=chat_id, text=html_content, parse_mode="HTML")
         except ValueError:
             logger.error(f"Invalid chat_id: {msg.chat_id}")
-        except Exception as e:
-            # Fallback to plain text if HTML parsing fails
-            logger.warning(f"HTML parse failed, falling back to plain text: {e}")
+            return
+
+        # Split markdown first, then convert each chunk to HTML individually.
+        # This avoids breaking HTML tags mid-element.
+        md_chunks = _split_message(msg.content)
+
+        for i, chunk in enumerate(md_chunks):
             try:
-                await self._app.bot.send_message(chat_id=int(msg.chat_id), text=msg.content)
-            except Exception as e2:
-                logger.error(f"Error sending Telegram message: {e2}")
+                html_content = _markdown_to_telegram_html(chunk)
+                await self._app.bot.send_message(
+                    chat_id=chat_id, text=html_content, parse_mode="HTML"
+                )
+            except Exception as e:
+                logger.warning(f"HTML parse failed for chunk {i}, falling back to plain text: {e}")
+                try:
+                    # Plain text fallback — also needs splitting
+                    plain_chunks = _split_message(chunk)
+                    for plain_chunk in plain_chunks:
+                        await self._app.bot.send_message(chat_id=chat_id, text=plain_chunk)
+                        if len(plain_chunks) > 1:
+                            await asyncio.sleep(0.05)
+                except Exception as e2:
+                    logger.error(f"Error sending Telegram message: {e2}")
+
+            if len(md_chunks) > 1 and i < len(md_chunks) - 1:
+                await asyncio.sleep(0.05)
 
     def _check_command_allowed(self, update: Update) -> bool:
         """Return True if the command sender is allowed."""
@@ -281,8 +336,21 @@ class TelegramChannel(BaseChannel):
         session.clear()
         self.session_manager.save(session)
 
-        logger.info(f"Session reset for {session_key} (cleared {msg_count} messages)")
-        await update.message.reply_text("🔄 Conversation history cleared. Let's start fresh!")
+        # Clear gateway log files
+        from nanoclaw.utils.helpers import get_data_path
+
+        log_dir = get_data_path() / "logs"
+        for log_name in ("gateway.out.log", "gateway.err.log"):
+            log_file = log_dir / log_name
+            try:
+                log_file.open("w").close()
+            except OSError:
+                logger.debug(f"Could not clear {log_file}")
+
+        logger.info(f"Session reset for {session_key} (cleared {msg_count} messages, logs cleared)")
+        await update.message.reply_text(
+            "🔄 Conversation history and gateway logs cleared. Let's start fresh!"
+        )
 
     async def _on_help(self, update: Update, context: ContextTypes.DEFAULT_TYPE) -> None:
         """Handle /help command — show available commands."""

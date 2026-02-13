@@ -44,6 +44,12 @@ class DaemonManager:
         env = self._collect_env()
         log_out, log_err = self._log_paths()
         log_out.parent.mkdir(parents=True, exist_ok=True)
+        # Truncate old gateway logs on fresh install
+        for log_file in (log_out, log_err):
+            try:
+                log_file.open("w").close()
+            except OSError:
+                pass
         return self._backend.install(command, env, log_out, log_err)
 
     def uninstall(self) -> None:
