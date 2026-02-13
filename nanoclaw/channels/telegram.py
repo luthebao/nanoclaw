@@ -7,9 +7,10 @@ import re
 from typing import TYPE_CHECKING
 
 from loguru import logger
-from telegram import BotCommand, Update
+from telegram import BotCommand, InlineKeyboardButton, InlineKeyboardMarkup, Message, Update
 from telegram.ext import (
     Application,
+    CallbackQueryHandler,
     CommandHandler,
     ContextTypes,
     MessageHandler,
@@ -131,6 +132,47 @@ def _split_message(text: str, max_length: int = TELEGRAM_MAX_LENGTH) -> list[str
     return chunks
 
 
+def _detect_choice_buttons(text: str) -> list[dict[str, str]] | None:
+    """Detect multiple-choice or yes/no patterns and return button definitions."""
+    # Try letter choices first: A) Red, **B.** Blue, C: Green, D] Purple
+    letter_pattern = re.compile(r"^\s*\*{0,2}([A-D])[).:\]]\*{0,2}\s+(.+)$", re.MULTILINE)
+    matches = letter_pattern.findall(text)
+    if len(matches) >= 2:
+        buttons = []
+        for letter, label_text in matches:
+            # Strip markdown bold/italic
+            label_text = re.sub(r"\*{1,2}(.+?)\*{1,2}", r"\1", label_text)
+            label_text = re.sub(r"_(.+?)_", r"\1", label_text)
+            label = f"{letter}) {label_text.strip()}"
+            if len(label) > 40:
+                label = label[:37] + "..."
+            buttons.append({"label": label, "data": letter})
+        if len(buttons) > 8:
+            return None
+        return buttons
+
+    # Try yes/no pattern
+    yesno_pattern = re.compile(r"(?:yes\s*/\s*no|yes\s+or\s+no|type\s+(?:yes|no))", re.IGNORECASE)
+    if yesno_pattern.search(text):
+        return [
+            {"label": "Yes", "data": "Yes"},
+            {"label": "No", "data": "No"},
+        ]
+
+    return None
+
+
+def _build_inline_keyboard(buttons: list[dict[str, str]]) -> InlineKeyboardMarkup:
+    """Build an InlineKeyboardMarkup from button definitions."""
+    kb_buttons = [InlineKeyboardButton(text=b["label"], callback_data=b["data"]) for b in buttons]
+    if len(kb_buttons) <= 4:
+        rows = [kb_buttons]
+    else:
+        mid = (len(kb_buttons) + 1) // 2
+        rows = [kb_buttons[:mid], kb_buttons[mid:]]
+    return InlineKeyboardMarkup(rows)
+
+
 class TelegramChannel(BaseChannel):
     """
     Telegram channel using long polling.
@@ -207,6 +249,9 @@ class TelegramChannel(BaseChannel):
             )
         )
 
+        # Add callback query handler for inline keyboard buttons
+        self._app.add_handler(CallbackQueryHandler(self._on_callback_query))
+
         logger.info("Starting Telegram bot (polling mode)...")
 
         # Initialize and start polling
@@ -227,7 +272,7 @@ class TelegramChannel(BaseChannel):
         # Start polling (this runs until stopped)
         assert self._app.updater is not None
         await self._app.updater.start_polling(
-            allowed_updates=["message"],
+            allowed_updates=["message", "callback_query"],
             drop_pending_updates=True,  # Ignore old messages on startup
         )
 
@@ -266,23 +311,37 @@ class TelegramChannel(BaseChannel):
             logger.error(f"Invalid chat_id: {msg.chat_id}")
             return
 
+        # Detect inline keyboard buttons from the full message
+        detected = _detect_choice_buttons(msg.content)
+        keyboard = _build_inline_keyboard(detected) if detected else None
+
         # Split markdown first, then convert each chunk to HTML individually.
         # This avoids breaking HTML tags mid-element.
         md_chunks = _split_message(msg.content)
 
         for i, chunk in enumerate(md_chunks):
+            is_last = i == len(md_chunks) - 1
+            markup = keyboard if is_last else None
             try:
                 html_content = _markdown_to_telegram_html(chunk)
                 await self._app.bot.send_message(
-                    chat_id=chat_id, text=html_content, parse_mode="HTML"
+                    chat_id=chat_id,
+                    text=html_content,
+                    parse_mode="HTML",
+                    reply_markup=markup,
                 )
             except Exception as e:
                 logger.warning(f"HTML parse failed for chunk {i}, falling back to plain text: {e}")
                 try:
                     # Plain text fallback — also needs splitting
                     plain_chunks = _split_message(chunk)
-                    for plain_chunk in plain_chunks:
-                        await self._app.bot.send_message(chat_id=chat_id, text=plain_chunk)
+                    for j, plain_chunk in enumerate(plain_chunks):
+                        plain_is_last = is_last and j == len(plain_chunks) - 1
+                        await self._app.bot.send_message(
+                            chat_id=chat_id,
+                            text=plain_chunk,
+                            reply_markup=markup if plain_is_last else None,
+                        )
                         if len(plain_chunks) > 1:
                             await asyncio.sleep(0.05)
                 except Exception as e2:
@@ -510,6 +569,56 @@ class TelegramChannel(BaseChannel):
                 "username": user.username,
                 "first_name": user.first_name,
                 "is_group": message.chat.type != "private",
+            },
+        )
+
+    async def _on_callback_query(self, update: Update, context: ContextTypes.DEFAULT_TYPE) -> None:
+        """Handle inline keyboard button presses."""
+        query = update.callback_query
+        if not query or not query.from_user:
+            return
+
+        user = query.from_user
+        message = query.message
+        if not isinstance(message, Message):
+            return
+
+        chat_id = str(message.chat_id)
+
+        sender_id = str(user.id)
+        if user.username:
+            sender_id = f"{sender_id}|{user.username}"
+
+        if not self.is_allowed(sender_id, chat_id):
+            logger.debug(f"Callback query from {sender_id} not allowed, ignoring")
+            return
+
+        # Acknowledge the button press (removes loading spinner)
+        await query.answer()
+
+        button_data = query.data or ""
+
+        # Edit original message: append selection and remove keyboard
+        try:
+            original_text = message.text_html or message.text or ""
+            edited = f"{original_text}\n\n✓ {button_data}"
+            await message.edit_text(text=edited, parse_mode="HTML", reply_markup=None)
+        except Exception as e:
+            logger.debug(f"Could not edit message after button press: {e}")
+
+        # Start typing indicator
+        self._start_typing(chat_id)
+
+        # Forward the button choice to the agent as if the user typed it
+        await self._handle_message(
+            sender_id=sender_id,
+            chat_id=chat_id,
+            content=button_data,
+            metadata={
+                "user_id": user.id,
+                "username": user.username,
+                "first_name": user.first_name,
+                "from_button": True,
             },
         )
 
