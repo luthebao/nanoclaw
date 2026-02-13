@@ -21,3 +21,4 @@ tests/
 botpy.log
 *.config.json
 config.json
+.worktrees/
