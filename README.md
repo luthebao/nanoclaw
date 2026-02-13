@@ -402,39 +402,78 @@ That's it! Environment variables, model prefixing, config matching, and `nanocla
 
 | Command | Description |
 |---------|-------------|
+| `nanoclaw --version` | Show version |
 | `nanoclaw onboard` | Initialize config & workspace |
-| `nanoclaw agent -m "..."` | Chat with the agent |
+| `nanoclaw status` | Show status |
+
+### Agent
+
+| Command | Description |
+|---------|-------------|
 | `nanoclaw agent` | Interactive chat mode |
+| `nanoclaw agent -m "..."` | Send a single message |
+| `nanoclaw agent -s SESSION_ID` | Use a specific session |
 | `nanoclaw agent --no-markdown` | Show plain-text replies |
 | `nanoclaw agent --logs` | Show runtime logs during chat |
-| `nanoclaw gateway` | Start the gateway |
-| `nanoclaw status` | Show status |
-| `nanoclaw channels login` | Link WhatsApp (scan QR) |
-| `nanoclaw channels status` | Show channel status |
+| `nanoclaw agent serve` | Run agent as TCP server (foreground) |
 
 Interactive mode exits: `exit`, `quit`, `/exit`, `/quit`, `:q`, or `Ctrl+D`.
 
+### Gateway
+
+| Command | Description |
+|---------|-------------|
+| `nanoclaw gateway` | Start the gateway (foreground) |
+| `nanoclaw gateway run` | Run the gateway in the foreground (used by daemon) |
+| `nanoclaw gateway install` | Install gateway as OS daemon |
+| `nanoclaw gateway uninstall` | Remove the gateway OS service |
+| `nanoclaw gateway start` | Start the gateway daemon |
+| `nanoclaw gateway stop` | Stop the gateway daemon |
+| `nanoclaw gateway restart` | Restart the gateway daemon |
+| `nanoclaw gateway status` | Show gateway daemon status |
+| `nanoclaw gateway logs` | Tail gateway logs |
+| `nanoclaw gateway logs -f` | Follow gateway log output |
+| `nanoclaw gateway logs -e` | Show stderr log instead |
+
+### Channels
+
+| Command | Description |
+|---------|-------------|
+| `nanoclaw channels status` | Show channel status |
+| `nanoclaw channels login` | Link device via QR code |
+
 ### Scheduled Tasks (Cron)
 
-```bash
-# Add a job
-nanoclaw cron add --name "daily" --message "Good morning!" --cron "0 9 * * *"
-nanoclaw cron add --name "hourly" --message "Check status" --every 3600
+| Command | Description |
+|---------|-------------|
+| `nanoclaw cron list` | List scheduled jobs |
+| `nanoclaw cron list -a` | Include disabled jobs |
+| `nanoclaw cron add --name "daily" --message "Good morning!" --cron "0 9 * * *"` | Add a cron job |
+| `nanoclaw cron add --name "hourly" --message "Check status" --every 3600` | Add an interval job |
+| `nanoclaw cron remove JOB_ID` | Remove a scheduled job |
+| `nanoclaw cron enable JOB_ID` | Enable a job |
+| `nanoclaw cron enable JOB_ID --disable` | Disable a job |
+| `nanoclaw cron run JOB_ID` | Manually run a job |
 
-# List jobs
-nanoclaw cron list
+## 🖥️ Background Daemons (macOS / Linux)
 
-# Remove a job
-nanoclaw cron remove JOB_ID
+nanoclaw supports running the **gateway** as an OS background daemon. Optionally, the agent can run as a separate foreground process connected via TCP.
+
+```
+  Gateway Process                    Agent Process (optional)
+┌─────────────────────┐         ┌─────────────────────┐
+│ ChannelManager      │         │ AgentLoop           │
+│ CronService         │  TCP    │ LLMProvider         │
+│ HeartbeatService    │◄───────►│ SessionManager      │
+│ NetworkBus (client) │ :18791  │ NetworkBus (server)  │
+└─────────────────────┘         └─────────────────────┘
 ```
 
-## 🖥️ Gateway Daemon (macOS)
-
-Run the gateway as a background service via launchd so it starts automatically and survives reboots.
+When the agent is not running separately, `nanoclaw gateway` falls back to in-process mode (all-in-one, same as before).
 
 > [!IMPORTANT]
 > On macOS, launchd cannot access virtualenv paths due to sandbox restrictions.
-> You **must** install nanoclaw globally before setting up the daemon.
+> You **must** install nanoclaw globally before setting up the gateway daemon.
 
 **1. Install nanoclaw globally**
 
@@ -452,25 +491,33 @@ To update after making changes to the codebase:
 uv tool install . --force
 ```
 
-**2. Install the daemon service**
+**2. Install and start the gateway daemon**
 
 ```bash
 nanoclaw gateway install
-```
-
-**3. Start the daemon**
-
-```bash
 nanoclaw gateway start
 ```
 
-**Other daemon commands:**
+**Gateway daemon management:**
 
 ```bash
-nanoclaw gateway stop       # Stop the daemon
-nanoclaw gateway restart    # Restart the daemon
-nanoclaw gateway uninstall  # Remove the service
+nanoclaw gateway stop      # Stop the gateway daemon
+nanoclaw gateway restart   # Restart the gateway daemon
+nanoclaw gateway status    # Show gateway daemon status
+nanoclaw gateway logs -f   # Follow gateway logs
+nanoclaw gateway uninstall # Remove the gateway service
 ```
+
+**Running the agent separately (advanced):**
+
+For production setups where you want the agent to persist across gateway restarts, run the agent as a foreground TCP server and manage its lifecycle yourself (e.g. via tmux, screen, or systemd):
+
+```bash
+nanoclaw agent serve       # Run agent as TCP server (foreground)
+```
+
+> [!TIP]
+> You can run `nanoclaw gateway` without a separate agent process — it will use in-process mode automatically. The split-process setup is optional.
 
 > [!NOTE]
 > If you run `nanoclaw gateway install` from inside a virtualenv (e.g. via `uv run`), it will fail with an error and instructions to install globally first.
@@ -513,7 +560,7 @@ nanoclaw/
 │   └── tools/      #    Built-in tools (incl. spawn)
 ├── skills/         # 🎯 Bundled skills (github, weather, tmux...)
 ├── channels/       # 📱 Chat channel integrations
-├── bus/            # 🚌 Message routing
+├── bus/            # 🚌 Message routing (in-process + TCP network bus)
 ├── cron/           # ⏰ Scheduled tasks
 ├── heartbeat/      # 💓 Proactive wake-up
 ├── providers/      # 🤖 LLM providers (OpenRouter, etc.)

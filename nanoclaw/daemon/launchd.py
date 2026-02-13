@@ -6,8 +6,9 @@ from pathlib import Path
 
 from nanoclaw.daemon.base import ServiceBackend, ServiceInfo
 
+_LAUNCH_AGENTS_DIR = Path.home() / "Library" / "LaunchAgents"
 LABEL = "com.nanoclaw.gateway"
-PLIST_PATH = Path.home() / "Library" / "LaunchAgents" / f"{LABEL}.plist"
+PLIST_PATH = _LAUNCH_AGENTS_DIR / f"{LABEL}.plist"
 
 
 class LaunchdBackend(ServiceBackend):
@@ -40,13 +41,13 @@ class LaunchdBackend(ServiceBackend):
             plistlib.dump(plist, f)
 
         # Register the agent (idempotent: unload first if already loaded)
-        self._launchctl("unload", ignore_errors=True)
-        self._launchctl("load")
+        _launchctl("unload", ignore_errors=True)
+        _launchctl("load")
         return PLIST_PATH
 
     def uninstall(self) -> None:
         if PLIST_PATH.exists():
-            self._launchctl("unload", ignore_errors=True)
+            _launchctl("unload", ignore_errors=True)
             PLIST_PATH.unlink(missing_ok=True)
 
     # ------------------------------------------------------------------
@@ -54,10 +55,10 @@ class LaunchdBackend(ServiceBackend):
     # ------------------------------------------------------------------
 
     def start(self) -> None:
-        self._launchctl("start", use_label=True)
+        _launchctl("load")
 
     def stop(self) -> None:
-        self._launchctl("stop", use_label=True)
+        _launchctl("unload")
 
     # ------------------------------------------------------------------
     # Status
@@ -109,19 +110,19 @@ class LaunchdBackend(ServiceBackend):
         except (OSError, ValueError):
             return None
 
-    @staticmethod
-    def _launchctl(
-        verb: str,
-        *,
-        use_label: bool = False,
-        ignore_errors: bool = False,
-    ) -> None:
-        """Run ``launchctl <verb> ...``."""
-        if use_label:
-            cmd = ["launchctl", verb, LABEL]
-        else:
-            cmd = ["launchctl", verb, str(PLIST_PATH)]
-        result = subprocess.run(cmd, capture_output=True, text=True)
-        if result.returncode != 0 and not ignore_errors:
-            msg = result.stderr.strip() or result.stdout.strip()
-            raise RuntimeError(f"launchctl {verb} failed: {msg}")
+
+def _launchctl(
+    verb: str,
+    *,
+    use_label: bool = False,
+    ignore_errors: bool = False,
+) -> None:
+    """Run ``launchctl <verb> ...``."""
+    if use_label:
+        cmd = ["launchctl", verb, LABEL]
+    else:
+        cmd = ["launchctl", verb, str(PLIST_PATH)]
+    result = subprocess.run(cmd, capture_output=True, text=True)
+    if result.returncode != 0 and not ignore_errors:
+        msg = result.stderr.strip() or result.stdout.strip()
+        raise RuntimeError(f"launchctl {verb} failed: {msg}")

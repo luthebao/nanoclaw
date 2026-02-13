@@ -6,9 +6,9 @@ from pathlib import Path
 
 from nanoclaw.daemon.base import ServiceBackend, ServiceInfo
 
+_UNIT_DIR = Path.home() / ".config" / "systemd" / "user"
 UNIT_NAME = "nanoclaw-gateway"
-UNIT_DIR = Path.home() / ".config" / "systemd" / "user"
-UNIT_PATH = UNIT_DIR / f"{UNIT_NAME}.service"
+UNIT_PATH = _UNIT_DIR / f"{UNIT_NAME}.service"
 
 
 class SystemdBackend(ServiceBackend):
@@ -45,28 +45,28 @@ class SystemdBackend(ServiceBackend):
             WantedBy=default.target
         """)
 
-        UNIT_DIR.mkdir(parents=True, exist_ok=True)
+        _UNIT_DIR.mkdir(parents=True, exist_ok=True)
         UNIT_PATH.write_text(unit)
-        self._systemctl("daemon-reload")
+        _systemctl("daemon-reload")
         return UNIT_PATH
 
     def uninstall(self) -> None:
         if self.is_running():
             self.stop()
-        self._systemctl("disable", ignore_errors=True)
+        _systemctl("disable", ignore_errors=True)
         if UNIT_PATH.exists():
             UNIT_PATH.unlink()
-        self._systemctl("daemon-reload")
+        _systemctl("daemon-reload")
 
     # ------------------------------------------------------------------
     # Start / Stop
     # ------------------------------------------------------------------
 
     def start(self) -> None:
-        self._systemctl("start")
+        _systemctl("start")
 
     def stop(self) -> None:
-        self._systemctl("stop")
+        _systemctl("stop")
 
     # ------------------------------------------------------------------
     # Status
@@ -112,13 +112,13 @@ class SystemdBackend(ServiceBackend):
         except (OSError, ValueError):
             return None
 
-    @staticmethod
-    def _systemctl(verb: str, *, ignore_errors: bool = False) -> None:
-        """Run ``systemctl --user <verb> <unit>``."""
-        cmd = ["systemctl", "--user", verb]
-        if verb != "daemon-reload":
-            cmd.append(UNIT_NAME)
-        result = subprocess.run(cmd, capture_output=True, text=True)
-        if result.returncode != 0 and not ignore_errors:
-            msg = result.stderr.strip() or result.stdout.strip()
-            raise RuntimeError(f"systemctl {verb} failed: {msg}")
+
+def _systemctl(verb: str, *, ignore_errors: bool = False) -> None:
+    """Run ``systemctl --user <verb> <unit>``."""
+    cmd = ["systemctl", "--user", verb]
+    if verb != "daemon-reload":
+        cmd.append(UNIT_NAME)
+    result = subprocess.run(cmd, capture_output=True, text=True)
+    if result.returncode != 0 and not ignore_errors:
+        msg = result.stderr.strip() or result.stdout.strip()
+        raise RuntimeError(f"systemctl {verb} failed: {msg}")

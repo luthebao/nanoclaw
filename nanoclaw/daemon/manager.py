@@ -27,7 +27,10 @@ _BASE_ENV_KEYS: list[str] = ["PATH", "HOME", "USER", "LANG"]
 class DaemonManager:
     """Facade: detects OS, resolves paths, delegates to the correct backend."""
 
-    def __init__(self, extra_env_passthrough: list[str] | None = None):
+    def __init__(
+        self,
+        extra_env_passthrough: list[str] | None = None,
+    ):
         self._backend = self._detect_backend()
         self._extra_passthrough = extra_env_passthrough or []
 

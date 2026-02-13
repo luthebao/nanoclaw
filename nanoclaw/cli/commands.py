@@ -454,10 +454,22 @@ gateway_app = typer.Typer(invoke_without_command=True, help="Manage the nanoclaw
 app.add_typer(gateway_app, name="gateway")
 
 
+def _try_connect_agent(host: str, port: int) -> bool:
+    """Check if the agent daemon is reachable on the given TCP port."""
+    import socket
+
+    sock = socket.socket(socket.AF_INET, socket.SOCK_STREAM)
+    sock.settimeout(1)
+    try:
+        sock.connect((host, port))
+        sock.close()
+        return True
+    except (ConnectionRefusedError, OSError):
+        return False
+
+
 def _run_gateway_foreground(port: int, verbose: bool) -> None:
-    """Start the gateway in the foreground (original behavior)."""
-    from nanoclaw.agent.loop import AgentLoop
-    from nanoclaw.bus.queue import MessageBus
+    """Start the gateway in the foreground."""
     from nanoclaw.channels.manager import ChannelManager
     from nanoclaw.config.loader import get_data_dir, load_config
     from nanoclaw.cron.service import CronService
@@ -473,57 +485,105 @@ def _run_gateway_foreground(port: int, verbose: bool) -> None:
     console.print(f"{__logo__} Starting nanoclaw gateway on port {port}...")
 
     config = load_config()
-    bus = MessageBus()
-    provider = _make_provider(config)
     session_manager = SessionManager(config.workspace_path)
 
-    # Create cron service first (callback set after agent creation)
+    agent_host = config.agent_service.host
+    agent_port = config.agent_service.port
+    use_network = _try_connect_agent(agent_host, agent_port)
+
+    # Decide bus mode: network (agent daemon running) or in-process (fallback)
+    agent = None
+    if use_network:
+        from nanoclaw.bus.network import NetworkBusClient
+
+        console.print(f"[green]✓[/green] Agent daemon detected at {agent_host}:{agent_port}")
+        bus = NetworkBusClient(agent_host, agent_port)
+    else:
+        from nanoclaw.agent.loop import AgentLoop
+        from nanoclaw.bus.queue import MessageBus
+
+        console.print("[yellow]Agent daemon not running, using in-process mode[/yellow]")
+        bus = MessageBus()
+        provider = _make_provider(config)
+
+    # Create cron service
     cron_store_path = get_data_dir() / "cron" / "jobs.json"
     cron = CronService(cron_store_path)
 
-    # Create agent with cron service
-    agent = AgentLoop(
-        bus=bus,
-        provider=provider,
-        workspace=config.workspace_path,
-        model=config.agents.defaults.model,
-        max_iterations=config.agents.defaults.max_tool_iterations,
-        brave_api_key=config.tools.web.search.api_key or None,
-        exec_config=config.tools.exec,
-        cron_service=cron,
-        restrict_to_workspace=config.tools.restrict_to_workspace,
-        session_manager=session_manager,
-        context_window=config.agents.defaults.context_window,
-        compaction_threshold=config.agents.defaults.compaction_threshold,
-    )
-
-    # Set cron callback (needs agent)
-    async def on_cron_job(job: CronJob) -> str | None:
-        """Execute a cron job through the agent."""
-        response = await agent.process_direct(
-            job.payload.message,
-            session_key=f"cron:{job.id}",
-            channel=job.payload.channel or "cli",
-            chat_id=job.payload.to or "direct",
+    if not use_network:
+        # In-process mode: create agent with cron service
+        agent = AgentLoop(
+            bus=bus,
+            provider=provider,
+            workspace=config.workspace_path,
+            model=config.agents.defaults.model,
+            max_iterations=config.agents.defaults.max_tool_iterations,
+            brave_api_key=config.tools.web.search.api_key or None,
+            exec_config=config.tools.exec,
+            cron_service=cron,
+            restrict_to_workspace=config.tools.restrict_to_workspace,
+            session_manager=session_manager,
+            context_window=config.agents.defaults.context_window,
+            compaction_threshold=config.agents.defaults.compaction_threshold,
         )
-        if job.payload.deliver and job.payload.to:
-            from nanoclaw.bus.events import OutboundMessage
 
-            await bus.publish_outbound(
-                OutboundMessage(
-                    channel=job.payload.channel or "cli",
-                    chat_id=job.payload.to,
-                    content=response or "",
+    # Set cron callback
+    if agent:
+        # In-process: call agent directly
+        async def on_cron_job(job: CronJob) -> str | None:
+            response = await agent.process_direct(
+                job.payload.message,
+                session_key=f"cron:{job.id}",
+                channel=job.payload.channel or "cli",
+                chat_id=job.payload.to or "direct",
+            )
+            if job.payload.deliver and job.payload.to:
+                from nanoclaw.bus.events import OutboundMessage
+
+                await bus.publish_outbound(
+                    OutboundMessage(
+                        channel=job.payload.channel or "cli",
+                        chat_id=job.payload.to,
+                        content=response or "",
+                    )
+                )
+            return response
+    else:
+        # Network mode: dispatch through the bus
+        async def on_cron_job(job: CronJob) -> str | None:
+            from nanoclaw.bus.events import InboundMessage
+
+            await bus.publish_inbound(
+                InboundMessage(
+                    channel=job.payload.channel or "cron",
+                    sender_id="cron",
+                    chat_id=job.payload.to or f"cron:{job.id}",
+                    content=job.payload.message,
                 )
             )
-        return response
+            return None
 
     cron.on_job = on_cron_job
 
     # Create heartbeat service
-    async def on_heartbeat(prompt: str) -> str:
-        """Execute heartbeat through the agent."""
-        return await agent.process_direct(prompt, session_key="heartbeat")
+    if agent:
+
+        async def on_heartbeat(prompt: str) -> str:
+            return await agent.process_direct(prompt, session_key="heartbeat")
+    else:
+
+        async def on_heartbeat(prompt: str) -> str:
+            from nanoclaw.bus.events import InboundMessage
+
+            await bus.publish_inbound(
+                InboundMessage(
+                    channel="heartbeat",
+                    sender_id="heartbeat",
+                    chat_id="heartbeat",
+                    content=prompt,
+                )
+            )
+            return ""
 
     heartbeat = HeartbeatService(
         workspace=config.workspace_path,
@@ -552,17 +612,21 @@ def _run_gateway_foreground(port: int, verbose: bool) -> None:
 
     async def run():
         try:
+            if use_network:
+                await bus.connect()
             await cron.start()
             await heartbeat.start()
-            await asyncio.gather(
-                agent.run(),
-                channels.start_all(),
-            )
+            tasks = [channels.start_all()]
+            if agent:
+                tasks.append(agent.run())
+            await asyncio.gather(*tasks)
         except KeyboardInterrupt:
             console.print("\nShutting down...")
             heartbeat.stop()
             cron.stop()
-            agent.stop()
+            if agent:
+                agent.stop()
+            bus.stop()
             await channels.stop_all()
 
     asyncio.run(run())
@@ -711,16 +775,73 @@ def _get_daemon_manager():
     from nanoclaw.daemon import DaemonManager
 
     config = load_config()
-    return DaemonManager(extra_env_passthrough=config.daemon.env_passthrough)
+    return DaemonManager(
+        extra_env_passthrough=config.daemon.env_passthrough,
+    )
 
 
 # ============================================================================
 # Agent Commands
 # ============================================================================
 
+agent_app = typer.Typer(invoke_without_command=True, help="Manage the nanoclaw agent service")
+app.add_typer(agent_app, name="agent")
 
-@app.command()
-def agent(
+
+def _run_agent_foreground() -> None:
+    """Run the agent as a standalone daemon (network bus server)."""
+    from nanoclaw.agent.loop import AgentLoop
+    from nanoclaw.bus.network import NetworkBusServer
+    from nanoclaw.config.loader import get_data_dir, load_config
+    from nanoclaw.cron.service import CronService
+    from nanoclaw.session.manager import SessionManager
+
+    config = load_config()
+    host = config.agent_service.host
+    port = config.agent_service.port
+
+    console.print(f"{__logo__} Starting nanoclaw agent on {host}:{port}...")
+
+    server = NetworkBusServer(host, port)
+    provider = _make_provider(config)
+    session_manager = SessionManager(config.workspace_path)
+
+    cron_store_path = get_data_dir() / "cron" / "jobs.json"
+    cron = CronService(cron_store_path)
+
+    agent_loop = AgentLoop(
+        bus=server,
+        provider=provider,
+        workspace=config.workspace_path,
+        model=config.agents.defaults.model,
+        max_iterations=config.agents.defaults.max_tool_iterations,
+        brave_api_key=config.tools.web.search.api_key or None,
+        exec_config=config.tools.exec,
+        cron_service=cron,
+        restrict_to_workspace=config.tools.restrict_to_workspace,
+        session_manager=session_manager,
+        context_window=config.agents.defaults.context_window,
+        compaction_threshold=config.agents.defaults.compaction_threshold,
+    )
+
+    console.print("[green]✓[/green] Agent ready, waiting for gateway connections...")
+
+    async def run():
+        try:
+            await cron.start()
+            await asyncio.gather(server.serve(), agent_loop.run())
+        except KeyboardInterrupt:
+            console.print("\nShutting down agent...")
+            cron.stop()
+            agent_loop.stop()
+            server.stop()
+
+    asyncio.run(run())
+
+
+@agent_app.callback()
+def agent_callback(
+    ctx: typer.Context,
     message: str = typer.Option(None, "--message", "-m", help="Message to send to the agent"),
     session_id: str = typer.Option("cli:default", "--session", "-s", help="Session ID"),
     markdown: bool = typer.Option(
@@ -730,7 +851,19 @@ def agent(
         False, "--logs/--no-logs", help="Show nanoclaw runtime logs during chat"
     ),
 ):
-    """Interact with the agent directly."""
+    """Interact with the agent directly, or manage the agent daemon service."""
+    ctx.ensure_object(dict)
+    ctx.obj["message"] = message
+    ctx.obj["session_id"] = session_id
+    ctx.obj["markdown"] = markdown
+    ctx.obj["logs"] = logs
+    if ctx.invoked_subcommand is None:
+        # No subcommand → interactive/single-message mode (original behavior)
+        _agent_interactive(message, session_id, markdown, logs)
+
+
+def _agent_interactive(message: str | None, session_id: str, markdown: bool, logs: bool) -> None:
+    """Run agent in interactive or single-message mode (original behavior)."""
     from loguru import logger
 
     from nanoclaw.agent.loop import AgentLoop
@@ -764,11 +897,10 @@ def agent(
             from contextlib import nullcontext
 
             return nullcontext()
-        # Animated spinner is safe to use with prompt_toolkit input handling
         return console.status("[dim]nanoclaw is thinking...[/dim]", spinner="dots")
 
     if message:
-        # Single message mode
+
         async def run_once():
             with _thinking_ctx():
                 response = await agent_loop.process_direct(message, session_id)
@@ -776,7 +908,6 @@ def agent(
 
         asyncio.run(run_once())
     else:
-        # Interactive mode
         _init_prompt_session()
         console.print(
             f"{__logo__} Interactive mode (type [bold]exit[/bold] or [bold]Ctrl+C[/bold] to quit)\n"
@@ -816,6 +947,12 @@ def agent(
                     break
 
         asyncio.run(run_interactive())
+
+
+@agent_app.command("serve")
+def agent_serve():
+    """Run the agent as a TCP server in the foreground."""
+    _run_agent_foreground()
 
 
 # ============================================================================
