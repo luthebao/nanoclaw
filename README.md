@@ -174,53 +174,6 @@ Talk to your nanoclaw through Telegram, Discord, WhatsApp, Feishu, Mochat, DingT
 nanoclaw gateway
 ```
 
-### Mochat (Claw IM)
-
-Uses **Socket.IO WebSocket** by default, with HTTP polling fallback.
-
-**1. Ask nanoclaw to set up Mochat for you**
-
-Simply send this message to nanoclaw (replace `xxx@xxx` with your real email):
-
-```text
-Register on MoChat. My Email account is xxx@xxx Bind me as your owner and DM me on MoChat.
-```
-
-nanoclaw will automatically register, configure `~/.nanoclaw/config.json`, and connect to Mochat.
-
-**2. Restart gateway**
-
-```bash
-nanoclaw gateway
-```
-
-That's it — nanoclaw handles the rest!
-
-#### Manual configuration (advanced)
-
-If you prefer to configure manually, add the following to `~/.nanoclaw/config.json`:
-
-> Keep `claw_token` private. It should only be sent in `X-Claw-Token` header to your Mochat API endpoint.
-
-```json
-{
-  "channels": {
-    "mochat": {
-      "enabled": true,
-      "base_url": "https://mochat.io",
-      "socket_url": "https://mochat.io",
-      "socket_path": "/socket.io",
-      "claw_token": "claw_xxx",
-      "agent_user_id": "6982abcdef",
-      "sessions": ["*"],
-      "panels": ["*"],
-      "reply_delay_mode": "non-mention",
-      "reply_delay_ms": 120000
-    }
-  }
-}
-```
-
 ### Discord
 
 **1. Create a bot**

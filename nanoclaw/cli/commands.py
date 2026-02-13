@@ -492,16 +492,17 @@ def _run_gateway_foreground(port: int, verbose: bool) -> None:
     use_network = _try_connect_agent(agent_host, agent_port)
 
     # Decide bus mode: network (agent daemon running) or in-process (fallback)
-    agent = None
-    if use_network:
-        from nanoclaw.bus.network import NetworkBusClient
+    from nanoclaw.agent.loop import AgentLoop
+    from nanoclaw.bus.network import NetworkBusClient
+    from nanoclaw.bus.queue import MessageBus
 
+    agent = None
+    provider = None
+    bus: MessageBus | NetworkBusClient
+    if use_network:
         console.print(f"[green]✓[/green] Agent daemon detected at {agent_host}:{agent_port}")
         bus = NetworkBusClient(agent_host, agent_port)
     else:
-        from nanoclaw.agent.loop import AgentLoop
-        from nanoclaw.bus.queue import MessageBus
-
         console.print("[yellow]Agent daemon not running, using in-process mode[/yellow]")
         bus = MessageBus()
         provider = _make_provider(config)
@@ -510,8 +511,9 @@ def _run_gateway_foreground(port: int, verbose: bool) -> None:
     cron_store_path = get_data_dir() / "cron" / "jobs.json"
     cron = CronService(cron_store_path)
 
-    if not use_network:
+    if not use_network and isinstance(bus, MessageBus):
         # In-process mode: create agent with cron service
+        assert provider is not None
         agent = AgentLoop(
             bus=bus,
             provider=provider,
@@ -537,7 +539,7 @@ def _run_gateway_foreground(port: int, verbose: bool) -> None:
                 channel=job.payload.channel or "cli",
                 chat_id=job.payload.to or "direct",
             )
-            if job.payload.deliver and job.payload.to:
+            if job.payload.deliver and job.payload.to and isinstance(bus, MessageBus):
                 from nanoclaw.bus.events import OutboundMessage
 
                 await bus.publish_outbound(
@@ -612,7 +614,7 @@ def _run_gateway_foreground(port: int, verbose: bool) -> None:
 
     async def run():
         try:
-            if use_network:
+            if use_network and isinstance(bus, NetworkBusClient):
                 await bus.connect()
             await cron.start()
             await heartbeat.start()
@@ -652,6 +654,17 @@ def gateway_run(ctx: typer.Context):
     _run_gateway_foreground(ctx.obj["port"], ctx.obj["verbose"])
 
 
+def _run_daemon_action(action: str, success_msg: str) -> None:
+    """Run a daemon manager action with standard error handling."""
+    try:
+        dm = _get_daemon_manager()
+        getattr(dm, action)()
+        console.print(f"[green]✓[/green] {success_msg}")
+    except RuntimeError as e:
+        console.print(f"[red]Error:[/red] {e}")
+        raise typer.Exit(1)
+
+
 @gateway_app.command("install")
 def gateway_install():
     """Install the gateway as an OS background service."""
@@ -668,49 +681,25 @@ def gateway_install():
 @gateway_app.command("uninstall")
 def gateway_uninstall():
     """Remove the gateway OS background service."""
-    try:
-        dm = _get_daemon_manager()
-        dm.uninstall()
-        console.print("[green]✓[/green] Service uninstalled")
-    except RuntimeError as e:
-        console.print(f"[red]Error:[/red] {e}")
-        raise typer.Exit(1)
+    _run_daemon_action("uninstall", "Service uninstalled")
 
 
 @gateway_app.command("start")
 def gateway_start():
     """Start the gateway daemon via the OS service manager."""
-    try:
-        dm = _get_daemon_manager()
-        dm.start()
-        console.print("[green]✓[/green] Gateway daemon started")
-    except RuntimeError as e:
-        console.print(f"[red]Error:[/red] {e}")
-        raise typer.Exit(1)
+    _run_daemon_action("start", "Gateway daemon started")
 
 
 @gateway_app.command("stop")
 def gateway_stop():
     """Stop the gateway daemon."""
-    try:
-        dm = _get_daemon_manager()
-        dm.stop()
-        console.print("[green]✓[/green] Gateway daemon stopped")
-    except RuntimeError as e:
-        console.print(f"[red]Error:[/red] {e}")
-        raise typer.Exit(1)
+    _run_daemon_action("stop", "Gateway daemon stopped")
 
 
 @gateway_app.command("restart")
 def gateway_restart():
     """Restart the gateway daemon."""
-    try:
-        dm = _get_daemon_manager()
-        dm.restart()
-        console.print("[green]✓[/green] Gateway daemon restarted")
-    except RuntimeError as e:
-        console.print(f"[red]Error:[/red] {e}")
-        raise typer.Exit(1)
+    _run_daemon_action("restart", "Gateway daemon restarted")
 
 
 @gateway_app.command("status")
@@ -971,38 +960,27 @@ def channels_status():
 
     config = load_config()
 
+    ch = config.channels
+    _dim = "[dim]not configured[/dim]"
+    rows = [
+        ("WhatsApp", ch.whatsapp, ch.whatsapp.bridge_url),
+        ("Discord", ch.discord, ch.discord.gateway_url),
+        ("Feishu", ch.feishu, f"app_id: {ch.feishu.app_id[:10]}..." if ch.feishu.app_id else _dim),
+        ("Mochat", ch.mochat, ch.mochat.base_url or _dim),
+        (
+            "Telegram",
+            ch.telegram,
+            f"token: {ch.telegram.token[:10]}..." if ch.telegram.token else _dim,
+        ),
+        ("Slack", ch.slack, "socket" if ch.slack.app_token and ch.slack.bot_token else _dim),
+    ]
+
     table = Table(title="Channel Status")
     table.add_column("Channel", style="cyan")
     table.add_column("Enabled", style="green")
     table.add_column("Configuration", style="yellow")
-
-    # WhatsApp
-    wa = config.channels.whatsapp
-    table.add_row("WhatsApp", "✓" if wa.enabled else "✗", wa.bridge_url)
-
-    dc = config.channels.discord
-    table.add_row("Discord", "✓" if dc.enabled else "✗", dc.gateway_url)
-
-    # Feishu
-    fs = config.channels.feishu
-    fs_config = f"app_id: {fs.app_id[:10]}..." if fs.app_id else "[dim]not configured[/dim]"
-    table.add_row("Feishu", "✓" if fs.enabled else "✗", fs_config)
-
-    # Mochat
-    mc = config.channels.mochat
-    mc_base = mc.base_url or "[dim]not configured[/dim]"
-    table.add_row("Mochat", "✓" if mc.enabled else "✗", mc_base)
-
-    # Telegram
-    tg = config.channels.telegram
-    tg_config = f"token: {tg.token[:10]}..." if tg.token else "[dim]not configured[/dim]"
-    table.add_row("Telegram", "✓" if tg.enabled else "✗", tg_config)
-
-    # Slack
-    slack = config.channels.slack
-    slack_config = "socket" if slack.app_token and slack.bot_token else "[dim]not configured[/dim]"
-    table.add_row("Slack", "✓" if slack.enabled else "✗", slack_config)
-
+    for name, cfg, detail in rows:
+        table.add_row(name, "✓" if cfg.enabled else "✗", detail)
     console.print(table)
 
 

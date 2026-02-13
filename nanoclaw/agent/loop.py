@@ -10,6 +10,7 @@ from typing import TYPE_CHECKING
 from loguru import logger
 
 if TYPE_CHECKING:
+    from nanoclaw.bus.network import NetworkBusServer
     from nanoclaw.config.schema import ExecToolConfig
     from nanoclaw.cron.service import CronService
 
@@ -48,7 +49,7 @@ class AgentLoop:
 
     def __init__(
         self,
-        bus: MessageBus,
+        bus: "MessageBus | NetworkBusServer",
         provider: LLMProvider,
         workspace: Path,
         model: str | None = None,
@@ -59,7 +60,7 @@ class AgentLoop:
         restrict_to_workspace: bool = False,
         session_manager: SessionManager | None = None,
         context_window: int = 128000,
-        compaction_threshold: float = 0.75,
+        compaction_threshold: float = 0.60,
     ):
         from nanoclaw.config.schema import ExecToolConfig
 
@@ -187,6 +188,20 @@ class AgentLoop:
 
         return apply_compaction(messages, start, end, summary_response.content or "")
 
+    def _update_tool_contexts(self, channel: str, chat_id: str) -> None:
+        """Update channel/chat context on contextual tools."""
+        message_tool = self.tools.get("message")
+        if isinstance(message_tool, MessageTool):
+            message_tool.set_context(channel, chat_id)
+
+        spawn_tool = self.tools.get("spawn")
+        if isinstance(spawn_tool, SpawnTool):
+            spawn_tool.set_context(channel, chat_id)
+
+        cron_tool = self.tools.get("cron")
+        if isinstance(cron_tool, CronTool):
+            cron_tool.set_context(channel, chat_id)
+
     async def _process_message(self, msg: InboundMessage) -> OutboundMessage | None:
         """
         Process a single inbound message.
@@ -211,17 +226,7 @@ class AgentLoop:
         session = self.sessions.get_or_create(msg.session_key)
 
         # Update tool contexts
-        message_tool = self.tools.get("message")
-        if isinstance(message_tool, MessageTool):
-            message_tool.set_context(msg.channel, msg.chat_id)
-
-        spawn_tool = self.tools.get("spawn")
-        if isinstance(spawn_tool, SpawnTool):
-            spawn_tool.set_context(msg.channel, msg.chat_id)
-
-        cron_tool = self.tools.get("cron")
-        if isinstance(cron_tool, CronTool):
-            cron_tool.set_context(msg.channel, msg.chat_id)
+        self._update_tool_contexts(msg.channel, msg.chat_id)
 
         # Build initial messages (use get_history for LLM-formatted messages)
         messages = self.context.build_messages(
@@ -338,17 +343,7 @@ class AgentLoop:
         session = self.sessions.get_or_create(session_key)
 
         # Update tool contexts
-        message_tool = self.tools.get("message")
-        if isinstance(message_tool, MessageTool):
-            message_tool.set_context(origin_channel, origin_chat_id)
-
-        spawn_tool = self.tools.get("spawn")
-        if isinstance(spawn_tool, SpawnTool):
-            spawn_tool.set_context(origin_channel, origin_chat_id)
-
-        cron_tool = self.tools.get("cron")
-        if isinstance(cron_tool, CronTool):
-            cron_tool.set_context(origin_channel, origin_chat_id)
+        self._update_tool_contexts(origin_channel, origin_chat_id)
 
         # Build messages with the announce content
         messages = self.context.build_messages(

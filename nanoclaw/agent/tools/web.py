@@ -46,27 +46,35 @@ def _validate_url(url: str) -> tuple[bool, str]:
 class WebSearchTool(Tool):
     """Search the web using Brave Search API."""
 
-    name = "web_search"
-    description = "Search the web. Returns titles, URLs, and snippets."
-    parameters = {
-        "type": "object",
-        "properties": {
-            "query": {"type": "string", "description": "Search query"},
-            "count": {
-                "type": "integer",
-                "description": "Results (1-10)",
-                "minimum": 1,
-                "maximum": 10,
+    @property
+    def name(self) -> str:
+        return "web_search"
+
+    @property
+    def description(self) -> str:
+        return "Search the web. Returns titles, URLs, and snippets."
+
+    @property
+    def parameters(self) -> dict[str, Any]:
+        return {
+            "type": "object",
+            "properties": {
+                "query": {"type": "string", "description": "Search query"},
+                "count": {
+                    "type": "integer",
+                    "description": "Results (1-10)",
+                    "minimum": 1,
+                    "maximum": 10,
+                },
             },
-        },
-        "required": ["query"],
-    }
+            "required": ["query"],
+        }
 
     def __init__(self, api_key: str | None = None, max_results: int = 5):
         self.api_key = api_key or os.environ.get("BRAVE_API_KEY", "")
         self.max_results = max_results
 
-    async def execute(self, query: str, count: int | None = None, **kwargs: Any) -> str:
+    async def execute(self, *, query: str, count: int | None = None, **kwargs: Any) -> str:
         if not self.api_key:
             return "Error: BRAVE_API_KEY not configured"
 
@@ -98,23 +106,40 @@ class WebSearchTool(Tool):
 class WebFetchTool(Tool):
     """Fetch and extract content from a URL using Readability."""
 
-    name = "web_fetch"
-    description = "Fetch URL and extract readable content (HTML → markdown/text)."
-    parameters = {
-        "type": "object",
-        "properties": {
-            "url": {"type": "string", "description": "URL to fetch"},
-            "extractMode": {"type": "string", "enum": ["markdown", "text"], "default": "markdown"},
-            "maxChars": {"type": "integer", "minimum": 100},
-        },
-        "required": ["url"],
-    }
+    @property
+    def name(self) -> str:
+        return "web_fetch"
 
-    def __init__(self, max_chars: int = 50000):
+    @property
+    def description(self) -> str:
+        return "Fetch URL and extract readable content (HTML → markdown/text)."
+
+    @property
+    def parameters(self) -> dict[str, Any]:
+        return {
+            "type": "object",
+            "properties": {
+                "url": {"type": "string", "description": "URL to fetch"},
+                "extractMode": {
+                    "type": "string",
+                    "enum": ["markdown", "text"],
+                    "default": "markdown",
+                },
+                "maxChars": {"type": "integer", "minimum": 100},
+            },
+            "required": ["url"],
+        }
+
+    def __init__(self, max_chars: int = 20000):
         self.max_chars = max_chars
 
     async def execute(
-        self, url: str, extract_mode: str = "markdown", max_chars: int | None = None, **kwargs: Any
+        self,
+        *,
+        url: str,
+        extract_mode: str = "markdown",
+        max_chars: int | None = None,
+        **kwargs: Any,
     ) -> str:
         from readability import Document
 

@@ -11,6 +11,7 @@ from typing import TYPE_CHECKING, Any
 from loguru import logger
 
 if TYPE_CHECKING:
+    from nanoclaw.bus.network import NetworkBusServer
     from nanoclaw.config.schema import ExecToolConfig
 
 from nanoclaw.agent.tools.filesystem import EditFileTool, ListDirTool, ReadFileTool, WriteFileTool
@@ -35,11 +36,12 @@ class SubagentManager:
         self,
         provider: LLMProvider,
         workspace: Path,
-        bus: MessageBus,
+        bus: "MessageBus | NetworkBusServer",
         model: str | None = None,
         brave_api_key: str | None = None,
         exec_config: "ExecToolConfig | None" = None,
         restrict_to_workspace: bool = False,
+        max_concurrent: int = 5,
     ):
         from nanoclaw.config.schema import ExecToolConfig
 
@@ -50,6 +52,7 @@ class SubagentManager:
         self.brave_api_key = brave_api_key
         self.exec_config = exec_config or ExecToolConfig()
         self.restrict_to_workspace = restrict_to_workspace
+        self.max_concurrent = max_concurrent
         self._running_tasks: dict[str, asyncio.Task[None]] = {}
 
     async def spawn(
@@ -71,6 +74,16 @@ class SubagentManager:
         Returns:
             Status message indicating the subagent was started.
         """
+        # Reap finished tasks
+        self._reap_done_tasks()
+
+        # Enforce concurrency limit
+        if len(self._running_tasks) >= self.max_concurrent:
+            return (
+                f"Cannot spawn subagent: {self.max_concurrent} already running. "
+                "Wait for one to complete first."
+            )
+
         task_id = str(uuid.uuid4())[:8]
         display_label = label or task[:30] + ("..." if len(task) > 30 else "")
 
@@ -83,11 +96,20 @@ class SubagentManager:
         bg_task = asyncio.create_task(self._run_subagent(task_id, task, display_label, origin))
         self._running_tasks[task_id] = bg_task
 
-        # Cleanup when done
-        bg_task.add_done_callback(lambda _: self._running_tasks.pop(task_id, None))
+        # Cleanup when done (try/finally ensures removal even on exceptions)
+        def _on_done(t: asyncio.Task[None]) -> None:
+            self._running_tasks.pop(task_id, None)
+
+        bg_task.add_done_callback(_on_done)
 
         logger.info(f"Spawned subagent [{task_id}]: {display_label}")
         return f"Subagent [{display_label}] started (id: {task_id}). I'll notify you when it completes."
+
+    def _reap_done_tasks(self) -> None:
+        """Remove finished or cancelled tasks from the tracking dict."""
+        done_ids = [tid for tid, t in self._running_tasks.items() if t.done()]
+        for tid in done_ids:
+            self._running_tasks.pop(tid, None)
 
     async def _run_subagent(
         self,

@@ -30,7 +30,7 @@ def build_compaction_request(messages_slice: list[dict]) -> list[dict]:
     than 2 000 characters are truncated so the summarisation request itself
     stays manageable.
     """
-    max_tool_result = 2000
+    max_tool_result = 1000
     parts: list[str] = []
 
     for msg in messages_slice:

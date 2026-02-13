@@ -24,6 +24,7 @@ class ContextBuilder:
         self.workspace = workspace
         self.memory = MemoryStore(workspace)
         self.skills = SkillsLoader(workspace)
+        self._file_cache: dict[Path, tuple[float, str]] = {}  # path -> (mtime, content)
 
     def build_system_prompt(self, skill_names: list[str] | None = None) -> str:
         """
@@ -111,14 +112,29 @@ For normal conversation, just respond with text - do not call the message tool.
 Always be helpful, accurate, and concise. When using tools, think step by step: what you know, what you need, and why you chose this tool.
 When remembering something, write to {workspace_path}/memory/MEMORY.md"""
 
+    def _read_cached(self, path: Path) -> str | None:
+        """Read file with mtime-based caching. Returns None if file doesn't exist."""
+        if not path.exists():
+            self._file_cache.pop(path, None)
+            return None
+        try:
+            mtime = path.stat().st_mtime
+        except OSError:
+            return None
+        cached = self._file_cache.get(path)
+        if cached and cached[0] == mtime:
+            return cached[1]
+        content = path.read_text(encoding="utf-8")
+        self._file_cache[path] = (mtime, content)
+        return content
+
     def _load_bootstrap_files(self) -> str:
         """Load all bootstrap files from workspace."""
         parts = []
 
         for filename in self.BOOTSTRAP_FILES:
-            file_path = self.workspace / filename
-            if file_path.exists():
-                content = file_path.read_text(encoding="utf-8")
+            content = self._read_cached(self.workspace / filename)
+            if content is not None:
                 parts.append(f"## {filename}\n\n{content}")
 
         return "\n\n".join(parts) if parts else ""

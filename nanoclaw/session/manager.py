@@ -1,6 +1,7 @@
 """Session management for conversation history."""
 
 import json
+from collections import OrderedDict
 from dataclasses import dataclass, field
 from datetime import datetime
 from pathlib import Path
@@ -62,17 +63,24 @@ class SessionManager:
     Sessions are stored as JSONL files in the sessions directory.
     """
 
-    def __init__(self, workspace: Path):
+    def __init__(self, workspace: Path, cache_maxsize: int = 64):
         self.workspace = workspace
         from nanoclaw.utils.helpers import get_data_path
 
         self.sessions_dir = ensure_dir(get_data_path() / "sessions")
-        self._cache: dict[str, Session] = {}
+        self._cache: OrderedDict[str, Session] = OrderedDict()
+        self._cache_maxsize = cache_maxsize
 
     def _get_session_path(self, key: str) -> Path:
         """Get the file path for a session."""
         safe_key = safe_filename(key.replace(":", "_"))
         return self.sessions_dir / f"{safe_key}.jsonl"
+
+    def _evict_if_needed(self) -> None:
+        """Evict oldest sessions from cache when over capacity."""
+        while len(self._cache) > self._cache_maxsize:
+            _, oldest_session = self._cache.popitem(last=False)
+            self.save(oldest_session)
 
     def get_or_create(self, key: str) -> Session:
         """
@@ -84,8 +92,9 @@ class SessionManager:
         Returns:
             The session.
         """
-        # Check cache
+        # Check cache (move to end for LRU)
         if key in self._cache:
+            self._cache.move_to_end(key)
             return self._cache[key]
 
         # Try to load from disk
@@ -94,6 +103,7 @@ class SessionManager:
             session = Session(key=key)
 
         self._cache[key] = session
+        self._evict_if_needed()
         return session
 
     def _load(self, key: str) -> Session | None:
