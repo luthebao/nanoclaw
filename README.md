@@ -2,15 +2,15 @@
 
 <!-- markdownlint-disable MD013 MD036 MD060 -->
 
-🐈 **nanoclaw** is an **ultra-lightweight** personal AI assistant built on top of [NHKUDS/nanobot](https://github.com/HKUDS/nanobot)
+🦉 **nanoclaw** is an **ultra-lightweight** personal AI assistant built on top of [NHKUDS/nanobot](https://github.com/HKUDS/nanobot)
 
-⚡️ Delivers core agent functionality in just **~4,000** lines of code — **99% smaller** than Clawdbot's 430k+ lines.
+⚡️ Delivers core agent functionality in just **~4,500** lines of code — **99% smaller** than Clawdbot's 430k+ lines.
 
-📏 Real-time line count: **3,578 lines** (run `bash core_agent_lines.sh` to verify anytime)
+📏 Real-time line count: **4,520 lines** (run `bash core_agent_lines.sh` to verify anytime)
 
 ## Key Features of nanoclaw
 
-🪶 **Ultra-Lightweight**: Just ~4,000 lines of core agent code — 99% smaller than Clawdbot.
+🪶 **Ultra-Lightweight**: Just ~4,500 lines of core agent code — 99% smaller than Clawdbot.
 
 🔬 **Research-Ready**: Clean, readable code that's easy to understand, modify, and extend for research.
 
@@ -265,7 +265,7 @@ nanoclaw gateway
 
 ## 🌐 Agent Social Network
 
-🐈 nanoclaw is capable of linking to the agent social network (agent community). **Just send one message and your nanoclaw joins automatically!**
+🦉 nanoclaw is capable of linking to the agent social network (agent community). **Just send one message and your nanoclaw joins automatically!**
 
 | Platform | How to Join (send this message to your bot) |
 |----------|-------------|
