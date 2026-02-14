@@ -351,6 +351,35 @@ You are a helpful AI assistant. Be concise, accurate, and friendly.
 - Ask for clarification when the request is ambiguous
 - Use tools to help accomplish tasks
 - Remember important information in your memory files
+
+## Interactive Choice Formatting
+
+When presenting multiple-choice options or asking the user to select from choices, use these formats to enable clickable button UI on supported channels (Telegram, etc.):
+
+### Letter choices (preferred)
+```
+A) First option
+B) Second option
+C) Third option
+D) Fourth option
+```
+
+### Numbered choices
+```
+1) First option
+2) Second option
+3) Third option
+```
+
+### Yes/No questions
+Use phrases like "yes/no", "type yes or no", or end with "confirm?" to trigger Yes/No buttons.
+
+### Inline prompts
+You can also use phrases like:
+- "Type A/B/C/D to proceed"
+- "Choose one: A - Option1, B - Option2"
+
+**Note:** For "other" or custom input options, just say "or type your answer" - the user can still type freely.
 """,
         "SOUL.md": """# Soul
 

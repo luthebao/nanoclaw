@@ -7,7 +7,15 @@ import re
 from typing import TYPE_CHECKING
 
 from loguru import logger
-from telegram import BotCommand, InlineKeyboardButton, InlineKeyboardMarkup, Message, Update
+from telegram import (
+    BotCommand,
+    InlineKeyboardButton,
+    InlineKeyboardMarkup,
+    KeyboardButton,
+    Message,
+    ReplyKeyboardMarkup,
+    Update,
+)
 from telegram.ext import (
     Application,
     CallbackQueryHandler,
@@ -133,8 +141,16 @@ def _split_message(text: str, max_length: int = TELEGRAM_MAX_LENGTH) -> list[str
 
 
 def _detect_choice_buttons(text: str) -> list[dict[str, str]] | None:
-    """Detect multiple-choice or yes/no patterns and return button definitions."""
-    # Try letter choices first: A) Red, **B.** Blue, C: Green, D] Purple
+    """
+    Detect multiple-choice or yes-no patterns and return button definitions.
+
+    Detects patterns like:
+    - Letter choices: A) Red, **B.** Blue, C: Green, D] Purple
+    - Numbered choices: 1. Option one, 2) Option two
+    - Yes/No patterns: "yes/no", "type yes or no"
+    - Prompt patterns: "type A/B/C/D to proceed", "multiple choice", "choose one:"
+    """
+    # Pattern 1: Letter choices (A) Red, **B.** Blue, C: Green, D] Purple)
     letter_pattern = re.compile(r"^\s*\*{0,2}([A-D])[).:\]]\*{0,2}\s+(.+)$", re.MULTILINE)
     matches = letter_pattern.findall(text)
     if len(matches) >= 2:
@@ -151,26 +167,74 @@ def _detect_choice_buttons(text: str) -> list[dict[str, str]] | None:
             return None
         return buttons
 
-    # Try yes/no pattern
-    yesno_pattern = re.compile(r"(?:yes\s*/\s*no|yes\s+or\s+no|type\s+(?:yes|no))", re.IGNORECASE)
+    # Pattern 2: Numbered choices (1. Option, 2) Option, 3: Option)
+    number_pattern = re.compile(r"^\s*\*{0,2}(\d+)[).:\]]\*{0,2}\s+(.+)$", re.MULTILINE)
+    num_matches = number_pattern.findall(text)
+    if len(num_matches) >= 2 and len(num_matches) <= 8:
+        buttons = []
+        for num, label_text in num_matches:
+            label_text = re.sub(r"\*{1,2}(.+?)\*{1,2}", r"\1", label_text)
+            label_text = re.sub(r"_(.+?)_", r"\1", label_text)
+            label = f"{num}) {label_text.strip()}"
+            if len(label) > 40:
+                label = label[:37] + "..."
+            buttons.append({"label": label, "data": num})
+        return buttons
+
+    # Pattern 3: Yes/No patterns
+    yesno_pattern = re.compile(
+        r"(?:yes\s*/\s*no|yes\s+or\s+no|type\s+(?:yes|no)|confirm\s*\?)",
+        re.IGNORECASE,
+    )
     if yesno_pattern.search(text):
         return [
             {"label": "Yes", "data": "Yes"},
             {"label": "No", "data": "No"},
         ]
 
+    # Pattern 4: "type A/B/C/D to proceed" style prompts
+    type_letter_pattern = re.compile(
+        r"type\s+([A-D])\s*(?:/|or|\s)\s*([A-D])(?:\s*(?:/|or|\s)\s*([A-D]))?(?:\s*(?:/|or|\s)\s*([A-D]))?\s*(?:to\s+proceed|to\s+continue|to\s+select)?",
+        re.IGNORECASE,
+    )
+    type_match = type_letter_pattern.search(text)
+    if type_match:
+        letters = [g.upper() for g in type_match.groups() if g]
+        if len(letters) >= 2:
+            return [{"label": letter, "data": letter} for letter in letters]
+
+    # Pattern 5: "choose one:" followed by inline options like "A - Option1, B - Option2"
+    choose_pattern = re.compile(r"choose\s+(?:one\s*)?:\s*(.+)", re.IGNORECASE)
+    choose_match = choose_pattern.search(text)
+    if choose_match:
+        options_text = choose_match.group(1)
+        # Try to parse "A - Option1, B - Option2" or "A: Option1 | B: Option2"
+        inline_options = re.findall(
+            r"\b([A-D])\s*[-:|]\s*([^,|]+?)(?:\s*[,|]|\s*$)",
+            options_text,
+            re.IGNORECASE,
+        )
+        if len(inline_options) >= 2:
+            buttons = []
+            for letter, label_text in inline_options:
+                label_text = label_text.strip()
+                if len(label_text) > 30:
+                    label_text = label_text[:27] + "..."
+                buttons.append({"label": f"{letter}) {label_text}", "data": letter.upper()})
+            return buttons
+
     return None
 
 
-def _build_inline_keyboard(buttons: list[dict[str, str]]) -> InlineKeyboardMarkup:
-    """Build an InlineKeyboardMarkup from button definitions."""
-    kb_buttons = [InlineKeyboardButton(text=b["label"], callback_data=b["data"]) for b in buttons]
-    if len(kb_buttons) <= 4:
-        rows = [kb_buttons]
-    else:
-        mid = (len(kb_buttons) + 1) // 2
-        rows = [kb_buttons[:mid], kb_buttons[mid:]]
-    return InlineKeyboardMarkup(rows)
+def _build_reply_keyboard(buttons: list[dict[str, str]]) -> ReplyKeyboardMarkup:
+    """Build a ReplyKeyboardMarkup from button definitions. Each button on its own row."""
+    # Each button on its own row, sends its label as text when tapped
+    rows = [[KeyboardButton(text=b["label"])] for b in buttons]
+    return ReplyKeyboardMarkup(
+        keyboard=rows,
+        resize_keyboard=True,  # Auto-size buttons
+        one_time_keyboard=True,  # Hide after tap
+    )
 
 
 class TelegramChannel(BaseChannel):
@@ -311,9 +375,9 @@ class TelegramChannel(BaseChannel):
             logger.error(f"Invalid chat_id: {msg.chat_id}")
             return
 
-        # Detect inline keyboard buttons from the full message
+        # Detect reply keyboard buttons from the full message
         detected = _detect_choice_buttons(msg.content)
-        keyboard = _build_inline_keyboard(detected) if detected else None
+        keyboard = _build_reply_keyboard(detected) if detected else None
 
         # Split markdown first, then convert each chunk to HTML individually.
         # This avoids breaking HTML tags mid-element.
