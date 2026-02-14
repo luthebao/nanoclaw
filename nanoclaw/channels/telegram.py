@@ -439,7 +439,7 @@ class TelegramChannel(BaseChannel):
 
         user = update.effective_user
         await update.message.reply_text(
-            f"👋 Hi {user.first_name}! I'm nanoclaw.\n\n"
+            f"🦉 Hi {user.first_name}! I'm nanoclaw.\n\n"
             "Send me a message and I'll respond!\n"
             "Type /help to see available commands."
         )
@@ -456,7 +456,7 @@ class TelegramChannel(BaseChannel):
 
         if self.session_manager is None:
             logger.warning("/reset called but session_manager is not available")
-            await update.message.reply_text("⚠️ Session management is not available.")
+            await update.message.reply_text("🦉 Session management is not available.")
             return
 
         session = self.session_manager.get_or_create(session_key)
@@ -490,7 +490,7 @@ class TelegramChannel(BaseChannel):
 
         # Check if already allowed
         if self.is_allowed(user_id, str(update.message.chat_id)):
-            await update.message.reply_text(f"✅ You are already allowed (ID: `{user_id}`)")
+            await update.message.reply_text(f"🦉 You are already allowed (ID: `{user_id}`)")
             return
 
         # Add user ID to config
@@ -502,10 +502,10 @@ class TelegramChannel(BaseChannel):
             save_config(config)
             logger.info(f"Added user {user_id} to telegram allow_from")
             await update.message.reply_text(
-                f"✅ Added your user ID to allow_from:\n`{user_id}`\n\nYou can now use the bot!"
+                f"🦉 Added your user ID to allow_from:\n`{user_id}`\n\nYou can now use the bot!"
             )
         else:
-            await update.message.reply_text(f"✅ Your user ID `{user_id}` is already in allow_from")
+            await update.message.reply_text(f"🦉 Your user ID `{user_id}` is already in allow_from")
 
     async def _on_help(self, update: Update, context: ContextTypes.DEFAULT_TYPE) -> None:
         """Handle /help command — show available commands."""
