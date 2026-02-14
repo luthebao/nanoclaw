@@ -250,6 +250,7 @@ class TelegramChannel(BaseChannel):
     BOT_COMMANDS = [
         BotCommand("start", "Start the bot"),
         BotCommand("reset", "Reset conversation history"),
+        BotCommand("allow", "Add your user ID to allow_from"),
         BotCommand("help", "Show available commands"),
     ]
 
@@ -295,6 +296,7 @@ class TelegramChannel(BaseChannel):
         # Add command handlers
         self._app.add_handler(CommandHandler("start", self._on_start))
         self._app.add_handler(CommandHandler("reset", self._on_reset))
+        self._app.add_handler(CommandHandler("allow", self._on_allow))
         self._app.add_handler(CommandHandler("help", self._on_help))
 
         # Add message handler for text, photos, voice, documents
@@ -477,6 +479,33 @@ class TelegramChannel(BaseChannel):
         await update.message.reply_text(
             "🔄 Conversation history and gateway logs cleared. Let's start fresh!"
         )
+
+    async def _on_allow(self, update: Update, context: ContextTypes.DEFAULT_TYPE) -> None:
+        """Handle /allow command — add user ID to allow_from list."""
+        if not update.message or not update.effective_user:
+            return
+
+        user = update.effective_user
+        user_id = str(user.id)
+
+        # Check if already allowed
+        if self.is_allowed(user_id, str(update.message.chat_id)):
+            await update.message.reply_text(f"✅ You are already allowed (ID: `{user_id}`)")
+            return
+
+        # Add user ID to config
+        from nanoclaw.config.loader import load_config, save_config
+
+        config = load_config()
+        if user_id not in config.channels.telegram.allow_from:
+            config.channels.telegram.allow_from.append(user_id)
+            save_config(config)
+            logger.info(f"Added user {user_id} to telegram allow_from")
+            await update.message.reply_text(
+                f"✅ Added your user ID to allow_from:\n`{user_id}`\n\nYou can now use the bot!"
+            )
+        else:
+            await update.message.reply_text(f"✅ Your user ID `{user_id}` is already in allow_from")
 
     async def _on_help(self, update: Update, context: ContextTypes.DEFAULT_TYPE) -> None:
         """Handle /help command — show available commands."""
