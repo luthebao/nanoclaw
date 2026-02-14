@@ -18,6 +18,10 @@ class Session:
     A conversation session.
 
     Stores messages in JSONL format for easy reading and persistence.
+
+    Important: Messages are append-only for LLM cache efficiency.
+    The consolidation process writes summaries to MEMORY.md/HISTORY.md
+    but does NOT modify the messages list or get_history() output.
     """
 
     key: str  # channel:chat_id
@@ -25,6 +29,7 @@ class Session:
     created_at: datetime = field(default_factory=datetime.now)
     updated_at: datetime = field(default_factory=datetime.now)
     metadata: dict[str, Any] = field(default_factory=dict)
+    last_consolidated: int = 0  # Number of messages already consolidated to files
 
     def add_message(self, role: str, content: str, **kwargs: Any) -> None:
         """Add a message to the session."""
@@ -51,8 +56,9 @@ class Session:
         return [{"role": m["role"], "content": m["content"]} for m in recent]
 
     def clear(self) -> None:
-        """Clear all messages in the session."""
+        """Clear all messages and reset session to initial state."""
         self.messages = []
+        self.last_consolidated = 0
         self.updated_at = datetime.now()
 
 
@@ -117,6 +123,7 @@ class SessionManager:
             messages = []
             metadata = {}
             created_at = None
+            last_consolidated = 0
 
             with open(path) as f:
                 for line in f:
@@ -133,6 +140,7 @@ class SessionManager:
                             if data.get("created_at")
                             else None
                         )
+                        last_consolidated = data.get("last_consolidated", 0)
                     else:
                         messages.append(data)
 
@@ -141,6 +149,7 @@ class SessionManager:
                 messages=messages,
                 created_at=created_at or datetime.now(),
                 metadata=metadata,
+                last_consolidated=last_consolidated,
             )
         except Exception as e:
             logger.warning(f"Failed to load session {key}: {e}")
@@ -157,6 +166,7 @@ class SessionManager:
                 "created_at": session.created_at.isoformat(),
                 "updated_at": session.updated_at.isoformat(),
                 "metadata": session.metadata,
+                "last_consolidated": session.last_consolidated,
             }
             f.write(json.dumps(metadata_line) + "\n")
 
@@ -165,6 +175,10 @@ class SessionManager:
                 f.write(json.dumps(msg) + "\n")
 
         self._cache[session.key] = session
+
+    def invalidate(self, key: str) -> None:
+        """Remove a session from the in-memory cache."""
+        self._cache.pop(key, None)
 
     def delete(self, key: str) -> bool:
         """

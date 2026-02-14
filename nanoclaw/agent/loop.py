@@ -227,9 +227,37 @@ class AgentLoop:
         # Get or create session
         session = self.sessions.get_or_create(session_key or msg.session_key)
 
+        # Handle slash commands
+        cmd = msg.content.strip().lower()
+        if cmd == "/new":
+            # Capture messages before clearing (avoid race condition with background task)
+            from nanoclaw.session.manager import Session as SessionClass
+            messages_to_archive = session.messages.copy()
+            session.clear()
+            self.sessions.save(session)
+            self.sessions.invalidate(session.key)
+
+            async def _consolidate_and_cleanup():
+                temp_session = SessionClass(key=session.key)
+                temp_session.messages = messages_to_archive
+                await self._consolidate_memory(temp_session, archive_all=True)
+
+            asyncio.create_task(_consolidate_and_cleanup())
+            return OutboundMessage(
+                channel=msg.channel,
+                chat_id=msg.chat_id,
+                content="New session started. 🦉",
+            )
+        if cmd == "/help":
+            return OutboundMessage(
+                channel=msg.channel,
+                chat_id=msg.chat_id,
+                content="🦉 nanoclaw commands:\n/new — Start a new conversation\n/help — Show available commands",
+            )
+
         # Consolidate memory before processing if session is too large
         if len(session.messages) > self.memory_window:
-            await self._consolidate_memory(session)
+            asyncio.create_task(self._consolidate_memory(session))
 
         # Update tool contexts
         self._update_tool_contexts(msg.channel, msg.chat_id)
@@ -327,14 +355,34 @@ class AgentLoop:
             or {},  # Pass through for channel-specific needs (e.g. Slack thread_ts)
         )
 
-    async def _consolidate_memory(self, session) -> None:
-        """Consolidate old messages into MEMORY.md + HISTORY.md, then trim session."""
+    async def _consolidate_memory(self, session, archive_all: bool = False) -> None:
+        """Consolidate old messages into MEMORY.md + HISTORY.md.
+
+        Args:
+            archive_all: If True, clear all messages and reset session (for /new command).
+                       If False, only write to files without modifying session.
+        """
         memory = MemoryStore(self.workspace)
-        keep_count = min(10, max(2, self.memory_window // 2))
-        old_messages = session.messages[:-keep_count]  # Everything except recent ones
-        if not old_messages:
-            return
-        logger.info(f"Memory consolidation started: {len(session.messages)} messages, archiving {len(old_messages)}, keeping {keep_count}")
+
+        if archive_all:
+            old_messages = session.messages
+            keep_count = 0
+            logger.info(f"Memory consolidation (archive_all): {len(session.messages)} total messages archived")
+        else:
+            keep_count = self.memory_window // 2
+            if len(session.messages) <= keep_count:
+                logger.debug(f"Session {session.key}: No consolidation needed (messages={len(session.messages)}, keep={keep_count})")
+                return
+
+            messages_to_process = len(session.messages) - session.last_consolidated
+            if messages_to_process <= 0:
+                logger.debug(f"Session {session.key}: No new messages to consolidate (last_consolidated={session.last_consolidated}, total={len(session.messages)})")
+                return
+
+            old_messages = session.messages[session.last_consolidated:-keep_count]
+            if not old_messages:
+                return
+            logger.info(f"Memory consolidation started: {len(session.messages)} total, {len(old_messages)} new to consolidate, {keep_count} keep")
 
         # Format messages for LLM (include tool names when available)
         lines = []
@@ -381,10 +429,11 @@ Respond with ONLY valid JSON, no markdown fences."""
                 if update != current_memory:
                     memory.write_long_term(update)
 
-            # Trim session to recent messages
-            session.messages = session.messages[-keep_count:]
-            self.sessions.save(session)
-            logger.info(f"Memory consolidation done, session trimmed to {len(session.messages)} messages")
+            if archive_all:
+                session.last_consolidated = 0
+            else:
+                session.last_consolidated = len(session.messages) - keep_count
+            logger.info(f"Memory consolidation done: {len(session.messages)} messages, last_consolidated={session.last_consolidated}")
         except Exception as e:
             logger.error(f"Memory consolidation failed: {e}")
 
