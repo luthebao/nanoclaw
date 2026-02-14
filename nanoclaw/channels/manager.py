@@ -55,14 +55,8 @@ class ChannelManager:
                     "session_manager": self.session_manager,
                 },
             ),
-            ("whatsapp", "nanoclaw.channels.whatsapp", "WhatsAppChannel", None),
             ("discord", "nanoclaw.channels.discord", "DiscordChannel", None),
-            ("feishu", "nanoclaw.channels.feishu", "FeishuChannel", None),
-            ("mochat", "nanoclaw.channels.mochat", "MochatChannel", None),
-            ("dingtalk", "nanoclaw.channels.dingtalk", "DingTalkChannel", None),
             ("email", "nanoclaw.channels.email", "EmailChannel", None),
-            ("slack", "nanoclaw.channels.slack", "SlackChannel", None),
-            ("qq", "nanoclaw.channels.qq", "QQChannel", None),
         ]
 
         for name, module_path, class_name, extra_kwargs in channel_registry:

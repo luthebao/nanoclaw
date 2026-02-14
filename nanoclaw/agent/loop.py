@@ -15,6 +15,7 @@ if TYPE_CHECKING:
     from nanoclaw.cron.service import CronService
 
 from nanoclaw.agent.context import ContextBuilder
+from nanoclaw.agent.memory import MemoryStore
 from nanoclaw.agent.subagent import SubagentManager
 from nanoclaw.agent.tools.cron import CronTool
 from nanoclaw.agent.tools.filesystem import (
@@ -54,6 +55,7 @@ class AgentLoop:
         workspace: Path,
         model: str | None = None,
         max_iterations: int = 20,
+        memory_window: int = 50,
         brave_api_key: str | None = None,
         exec_config: "ExecToolConfig | None" = None,
         cron_service: "CronService | None" = None,
@@ -69,6 +71,7 @@ class AgentLoop:
         self.workspace = workspace
         self.model = model or provider.get_default_model()
         self.max_iterations = max_iterations
+        self.memory_window = memory_window
         self.brave_api_key = brave_api_key
         self.exec_config = exec_config or ExecToolConfig()
         self.cron_service = cron_service
@@ -202,14 +205,13 @@ class AgentLoop:
         if isinstance(cron_tool, CronTool):
             cron_tool.set_context(channel, chat_id)
 
-    async def _process_message(self, msg: InboundMessage) -> OutboundMessage | None:
+    async def _process_message(self, msg: InboundMessage, session_key: str | None = None) -> OutboundMessage | None:
         """
         Process a single inbound message.
 
-
         Args:
             msg: The inbound message to process.
-
+            session_key: Override session key (used by process_direct).
 
         Returns:
             The response message, or None if no response needed.
@@ -223,7 +225,11 @@ class AgentLoop:
         logger.info(f"Processing message from {msg.channel}:{msg.sender_id}: {preview}")
 
         # Get or create session
-        session = self.sessions.get_or_create(msg.session_key)
+        session = self.sessions.get_or_create(session_key or msg.session_key)
+
+        # Consolidate memory before processing if session is too large
+        if len(session.messages) > self.memory_window:
+            await self._consolidate_memory(session)
 
         # Update tool contexts
         self._update_tool_contexts(msg.channel, msg.chat_id)
@@ -240,6 +246,7 @@ class AgentLoop:
         # Agent loop
         iteration = 0
         final_content = None
+        tools_used: list[str] = []
 
         while iteration < self.max_iterations:
             iteration += 1
@@ -272,6 +279,7 @@ class AgentLoop:
 
                 # Execute tools
                 for tool_call in response.tool_calls:
+                    tools_used.append(tool_call.name)
                     args_str = json.dumps(tool_call.arguments, ensure_ascii=False)
                     logger.info(f"Tool call: {tool_call.name}({args_str[:200]})")
                     result = await self.tools.execute(tool_call.name, tool_call.arguments)
@@ -305,9 +313,10 @@ class AgentLoop:
         preview = final_content[:120] + "..." if len(final_content) > 120 else final_content
         logger.info(f"Response to {msg.channel}:{msg.sender_id}: {preview}")
 
-        # Save to session
+        # Save to session (include tool names so consolidation sees what happened)
         session.add_message("user", msg.content)
-        session.add_message("assistant", final_content)
+        session.add_message("assistant", final_content,
+                            tools_used=tools_used if tools_used else None)
         self.sessions.save(session)
 
         return OutboundMessage(
@@ -317,6 +326,67 @@ class AgentLoop:
             metadata=msg.metadata
             or {},  # Pass through for channel-specific needs (e.g. Slack thread_ts)
         )
+
+    async def _consolidate_memory(self, session) -> None:
+        """Consolidate old messages into MEMORY.md + HISTORY.md, then trim session."""
+        memory = MemoryStore(self.workspace)
+        keep_count = min(10, max(2, self.memory_window // 2))
+        old_messages = session.messages[:-keep_count]  # Everything except recent ones
+        if not old_messages:
+            return
+        logger.info(f"Memory consolidation started: {len(session.messages)} messages, archiving {len(old_messages)}, keeping {keep_count}")
+
+        # Format messages for LLM (include tool names when available)
+        lines = []
+        for m in old_messages:
+            if not m.get("content"):
+                continue
+            tools = f" [tools: {', '.join(m['tools_used'])}]" if m.get("tools_used") else ""
+            lines.append(f"[{m.get('timestamp', '?')[:16]}] {m['role'].upper()}{tools}: {m['content']}")
+        conversation = "\n".join(lines)
+        current_memory = memory.read_long_term()
+
+        prompt = f"""You are a memory consolidation agent. Process this conversation and return a JSON object with exactly two keys:
+
+1. "history_entry": A paragraph (2-5 sentences) summarizing the key events/decisions/topics. Start with a timestamp like [YYYY-MM-DD HH:MM]. Include enough detail to be useful when found by grep search later.
+
+2. "memory_update": The updated long-term memory content. Add any new facts: user location, preferences, personal info, habits, project context, technical decisions, tools/services used. If nothing new, return the existing content unchanged.
+
+## Current Long-term Memory
+{current_memory or "(empty)"}
+
+## Conversation to Process
+{conversation}
+
+Respond with ONLY valid JSON, no markdown fences."""
+
+        try:
+            response = await self.provider.chat(
+                messages=[
+                    {"role": "system", "content": "You are a memory consolidation agent. Respond only with valid JSON."},
+                    {"role": "user", "content": prompt},
+                ],
+                model=self.model,
+            )
+            import json as _json
+            text = (response.content or "").strip()
+            # Strip markdown fences that LLMs often add despite instructions
+            if text.startswith("```"):
+                text = text.split("\n", 1)[-1].rsplit("```", 1)[0].strip()
+            result = _json.loads(text)
+
+            if entry := result.get("history_entry"):
+                memory.append_history(entry)
+            if update := result.get("memory_update"):
+                if update != current_memory:
+                    memory.write_long_term(update)
+
+            # Trim session to recent messages
+            session.messages = session.messages[-keep_count:]
+            self.sessions.save(session)
+            logger.info(f"Memory consolidation done, session trimmed to {len(session.messages)} messages")
+        except Exception as e:
+            logger.error(f"Memory consolidation failed: {e}")
 
     async def _process_system_message(self, msg: InboundMessage) -> OutboundMessage | None:
         """
@@ -432,18 +502,16 @@ class AgentLoop:
         """
         Process a message directly (for CLI or cron usage).
 
-
         Args:
             content: The message content.
-            session_key: Session identifier.
-            channel: Source channel (for context).
-            chat_id: Source chat ID (for context).
-
+            session_key: Session identifier (overrides channel:chat_id for session lookup).
+            channel: Source channel (for tool context routing).
+            chat_id: Source chat ID (for tool context routing).
 
         Returns:
             The agent's response.
         """
         msg = InboundMessage(channel=channel, sender_id="user", chat_id=chat_id, content=content)
 
-        response = await self._process_message(msg)
+        response = await self._process_message(msg, session_key=session_key)
         return response.content if response else ""

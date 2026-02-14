@@ -9,11 +9,10 @@ from typing import TYPE_CHECKING
 from loguru import logger
 from telegram import (
     BotCommand,
-    InlineKeyboardButton,
-    InlineKeyboardMarkup,
     KeyboardButton,
     Message,
     ReplyKeyboardMarkup,
+    ReplyKeyboardRemove,
     Update,
 )
 from telegram.ext import (
@@ -251,6 +250,7 @@ class TelegramChannel(BaseChannel):
     BOT_COMMANDS = [
         BotCommand("start", "Start the bot"),
         BotCommand("reset", "Reset conversation history"),
+        BotCommand("allow", "Add your user ID to allow_from"),
         BotCommand("help", "Show available commands"),
     ]
 
@@ -296,6 +296,7 @@ class TelegramChannel(BaseChannel):
         # Add command handlers
         self._app.add_handler(CommandHandler("start", self._on_start))
         self._app.add_handler(CommandHandler("reset", self._on_reset))
+        self._app.add_handler(CommandHandler("allow", self._on_allow))
         self._app.add_handler(CommandHandler("help", self._on_help))
 
         # Add message handler for text, photos, voice, documents
@@ -385,7 +386,11 @@ class TelegramChannel(BaseChannel):
 
         for i, chunk in enumerate(md_chunks):
             is_last = i == len(md_chunks) - 1
-            markup = keyboard if is_last else None
+            # On the last chunk: show keyboard if buttons detected, otherwise remove any existing keyboard
+            if is_last:
+                markup = keyboard if keyboard else ReplyKeyboardRemove()
+            else:
+                markup = None
             try:
                 html_content = _markdown_to_telegram_html(chunk)
                 await self._app.bot.send_message(
@@ -434,7 +439,7 @@ class TelegramChannel(BaseChannel):
 
         user = update.effective_user
         await update.message.reply_text(
-            f"👋 Hi {user.first_name}! I'm nanoclaw.\n\n"
+            f"🦉 Hi {user.first_name}! I'm nanoclaw.\n\n"
             "Send me a message and I'll respond!\n"
             "Type /help to see available commands."
         )
@@ -451,7 +456,7 @@ class TelegramChannel(BaseChannel):
 
         if self.session_manager is None:
             logger.warning("/reset called but session_manager is not available")
-            await update.message.reply_text("⚠️ Session management is not available.")
+            await update.message.reply_text("🦉 Session management is not available.")
             return
 
         session = self.session_manager.get_or_create(session_key)
@@ -475,6 +480,33 @@ class TelegramChannel(BaseChannel):
             "🔄 Conversation history and gateway logs cleared. Let's start fresh!"
         )
 
+    async def _on_allow(self, update: Update, context: ContextTypes.DEFAULT_TYPE) -> None:
+        """Handle /allow command — add user ID to allow_from list."""
+        if not update.message or not update.effective_user:
+            return
+
+        user = update.effective_user
+        user_id = str(user.id)
+
+        # Check if already allowed
+        if self.is_allowed(user_id, str(update.message.chat_id)):
+            await update.message.reply_text(f"🦉 You are already allowed (ID: `{user_id}`)")
+            return
+
+        # Add user ID to config
+        from nanoclaw.config.loader import load_config, save_config
+
+        config = load_config()
+        if user_id not in config.channels.telegram.allow_from:
+            config.channels.telegram.allow_from.append(user_id)
+            save_config(config)
+            logger.info(f"Added user {user_id} to telegram allow_from")
+            await update.message.reply_text(
+                f"🦉 Added your user ID to allow_from:\n`{user_id}`\n\nYou can now use the bot!"
+            )
+        else:
+            await update.message.reply_text(f"🦉 Your user ID `{user_id}` is already in allow_from")
+
     async def _on_help(self, update: Update, context: ContextTypes.DEFAULT_TYPE) -> None:
         """Handle /help command — show available commands."""
         if not update.message:
@@ -483,7 +515,7 @@ class TelegramChannel(BaseChannel):
             return
 
         help_text = (
-            "🐈 <b>nanoclaw commands</b>\n\n"
+            "🦉 <b>nanoclaw commands</b>\n\n"
             "/start — Start the bot\n"
             "/reset — Reset conversation history\n"
             "/help — Show this help message\n\n"

@@ -84,7 +84,7 @@ Skills with available="false" need dependencies installed first - you can try in
         system = platform.system()
         runtime = f"{'macOS' if system == 'Darwin' else system} {platform.machine()}, Python {platform.python_version()}"
 
-        return f"""# nanoclaw 🐈
+        return f"""# nanoclaw 🦉
 
 You are nanoclaw, a helpful AI assistant. You have access to tools that allow you to:
 - Read, write, and edit files
@@ -101,8 +101,8 @@ You are nanoclaw, a helpful AI assistant. You have access to tools that allow yo
 
 ## Workspace
 Your workspace is at: {workspace_path}
-- Memory files: {workspace_path}/memory/MEMORY.md
-- Daily notes: {workspace_path}/memory/YYYY-MM-DD.md
+- Long-term memory: {workspace_path}/memory/MEMORY.md
+- History log: {workspace_path}/memory/HISTORY.md (grep-searchable)
 - Custom skills: {workspace_path}/skills/{{skill-name}}/SKILL.md
 
 IMPORTANT: When responding to direct questions or conversations, reply directly with your text response.
@@ -110,7 +110,8 @@ Only use the 'message' tool when you need to send a message to a specific chat c
 For normal conversation, just respond with text - do not call the message tool.
 
 Always be helpful, accurate, and concise. When using tools, think step by step: what you know, what you need, and why you chose this tool.
-When remembering something, write to {workspace_path}/memory/MEMORY.md"""
+When remembering something important, write to {workspace_path}/memory/MEMORY.md
+To recall past events, grep {workspace_path}/memory/HISTORY.md"""
 
     def _read_cached(self, path: Path) -> str | None:
         """Read file with mtime-based caching. Returns None if file doesn't exist."""
@@ -156,7 +157,7 @@ When remembering something, write to {workspace_path}/memory/MEMORY.md"""
             current_message: The new user message.
             skill_names: Optional skills to include.
             media: Optional list of local file paths for images/media.
-            channel: Current channel (telegram, feishu, etc.).
+            channel: Current channel (telegram, discord, email, etc.).
             chat_id: Current chat/user ID.
 
         Returns:

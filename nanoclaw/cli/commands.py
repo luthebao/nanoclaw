@@ -144,7 +144,9 @@ def version_callback(value: bool):
 
 @app.callback()
 def main(
-    version: bool = typer.Option(None, "--version", "-v", callback=version_callback, is_eager=True),
+    version: bool = typer.Option(
+        None, "--version", "-v", callback=version_callback, is_eager=True
+    ),
 ):
     """nanoclaw - Personal AI Assistant."""
     pass
@@ -238,13 +240,7 @@ def _configure_channels(config):
     channel_names = [
         ("telegram", "Telegram"),
         ("discord", "Discord"),
-        ("slack", "Slack"),
-        ("whatsapp", "WhatsApp"),
-        ("feishu", "Feishu"),
-        ("dingtalk", "DingTalk"),
         ("email", "Email"),
-        ("mochat", "Mochat"),
-        ("qq", "QQ"),
     ]
     while True:
         choices = []
@@ -263,31 +259,15 @@ def _configure_channels(config):
         key = pick
         label = next(name for k, name in channel_names if k == key)
         ch = getattr(config.channels, key)
-        enabled_str = typer.prompt(f"  {label} enabled? (y/n)", default="y" if ch.enabled else "n")
+        enabled_str = typer.prompt(
+            f"  {label} enabled? (y/n)", default="y" if ch.enabled else "n"
+        )
         ch.enabled = enabled_str.lower() in ("y", "yes", "true", "1")
         # Prompt for key credential fields based on channel type
         if hasattr(ch, "token") and key != "discord":
             ch.token = typer.prompt(f"  {label} token", default=ch.token or "")
         if hasattr(ch, "token") and key == "discord":
             ch.token = typer.prompt(f"  {label} bot token", default=ch.token or "")
-        if hasattr(ch, "bot_token") and key == "slack":
-            ch.bot_token = typer.prompt(
-                f"  {label} bot token (xoxb-...)", default=ch.bot_token or ""
-            )
-            ch.app_token = typer.prompt(
-                f"  {label} app token (xapp-...)", default=ch.app_token or ""
-            )
-        if hasattr(ch, "app_id") and key == "feishu":
-            ch.app_id = typer.prompt(f"  {label} app_id", default=ch.app_id or "")
-            ch.app_secret = typer.prompt(f"  {label} app_secret", default=ch.app_secret or "")
-        if hasattr(ch, "client_id") and key == "dingtalk":
-            ch.client_id = typer.prompt(f"  {label} client_id", default=ch.client_id or "")
-            ch.client_secret = typer.prompt(
-                f"  {label} client_secret", default=ch.client_secret or ""
-            )
-        if hasattr(ch, "app_id") and key == "qq":
-            ch.app_id = typer.prompt(f"  {label} app_id", default=ch.app_id or "")
-            ch.secret = typer.prompt(f"  {label} secret", default=ch.secret or "")
         console.print(f"  [green]✓[/green] {label} configured")
         console.print()
 
@@ -350,7 +330,7 @@ You are a helpful AI assistant. Be concise, accurate, and friendly.
 - Always explain what you're doing before taking actions
 - Ask for clarification when the request is ambiguous
 - Use tools to help accomplish tasks
-- Remember important information in your memory files
+- Remember important information in memory/MEMORY.md; past events are logged in memory/HISTORY.md
 
 ## Interactive Choice Formatting
 
@@ -440,6 +420,11 @@ This file stores important information that should persist across sessions.
         )
         console.print("  [dim]Created memory/MEMORY.md[/dim]")
 
+    history_file = memory_dir / "HISTORY.md"
+    if not history_file.exists():
+        history_file.write_text("")
+        console.print("  [dim]Created memory/HISTORY.md[/dim]")
+
     # Create skills directory for custom user skills
     skills_dir = workspace / "skills"
     skills_dir.mkdir(exist_ok=True)
@@ -479,7 +464,9 @@ def _make_provider(config):
 # Gateway / Server
 # ============================================================================
 
-gateway_app = typer.Typer(invoke_without_command=True, help="Manage the nanoclaw gateway service")
+gateway_app = typer.Typer(
+    invoke_without_command=True, help="Manage the nanoclaw gateway service"
+)
 app.add_typer(gateway_app, name="gateway")
 
 
@@ -529,10 +516,14 @@ def _run_gateway_foreground(port: int, verbose: bool) -> None:
     provider = None
     bus: MessageBus | NetworkBusClient
     if use_network:
-        console.print(f"[green]✓[/green] Agent daemon detected at {agent_host}:{agent_port}")
+        console.print(
+            f"[green]✓[/green] Agent daemon detected at {agent_host}:{agent_port}"
+        )
         bus = NetworkBusClient(agent_host, agent_port)
     else:
-        console.print("[yellow]Agent daemon not running, using in-process mode[/yellow]")
+        console.print(
+            "[yellow]Agent daemon not running, using in-process mode[/yellow]"
+        )
         bus = MessageBus()
         provider = _make_provider(config)
 
@@ -549,6 +540,7 @@ def _run_gateway_foreground(port: int, verbose: bool) -> None:
             workspace=config.workspace_path,
             model=config.agents.defaults.model,
             max_iterations=config.agents.defaults.max_tool_iterations,
+            memory_window=config.agents.defaults.memory_window,
             brave_api_key=config.tools.web.search.api_key or None,
             exec_config=config.tools.exec,
             cron_service=cron,
@@ -579,6 +571,7 @@ def _run_gateway_foreground(port: int, verbose: bool) -> None:
                     )
                 )
             return response
+
     else:
         # Network mode: dispatch through the bus
         async def on_cron_job(job: CronJob) -> str | None:
@@ -601,6 +594,7 @@ def _run_gateway_foreground(port: int, verbose: bool) -> None:
 
         async def on_heartbeat(prompt: str) -> str:
             return await agent.process_direct(prompt, session_key="heartbeat")
+
     else:
 
         async def on_heartbeat(prompt: str) -> str:
@@ -627,7 +621,9 @@ def _run_gateway_foreground(port: int, verbose: bool) -> None:
     channels = ChannelManager(config, bus, session_manager=session_manager)
 
     if channels.enabled_channels:
-        console.print(f"[green]✓[/green] Channels enabled: {', '.join(channels.enabled_channels)}")
+        console.print(
+            f"[green]✓[/green] Channels enabled: {', '.join(channels.enabled_channels)}"
+        )
     else:
         console.print("[yellow]Warning: No channels enabled[/yellow]")
 
@@ -748,7 +744,9 @@ def gateway_status():
     table.add_column("Value")
 
     table.add_row("Service", info.name)
-    table.add_row("Installed", "[green]yes[/green]" if info.installed else "[red]no[/red]")
+    table.add_row(
+        "Installed", "[green]yes[/green]" if info.installed else "[red]no[/red]"
+    )
     table.add_row("Running", "[green]yes[/green]" if info.running else "[dim]no[/dim]")
     table.add_row("PID", str(info.pid) if info.pid else "-")
     table.add_row("Service file", str(info.service_file) if info.service_file else "-")
@@ -762,7 +760,9 @@ def gateway_status():
 def gateway_logs(
     follow: bool = typer.Option(False, "--follow", "-f", help="Follow log output"),
     lines: int = typer.Option(50, "--lines", "-n", help="Number of lines to show"),
-    stderr: bool = typer.Option(False, "--stderr", "-e", help="Show stderr log instead"),
+    stderr: bool = typer.Option(
+        False, "--stderr", "-e", help="Show stderr log instead"
+    ),
 ):
     """Tail gateway log files."""
     import subprocess as sp
@@ -802,7 +802,9 @@ def _get_daemon_manager():
 # Agent Commands
 # ============================================================================
 
-agent_app = typer.Typer(invoke_without_command=True, help="Manage the nanoclaw agent service")
+agent_app = typer.Typer(
+    invoke_without_command=True, help="Manage the nanoclaw agent service"
+)
 app.add_typer(agent_app, name="agent")
 
 
@@ -833,6 +835,7 @@ def _run_agent_foreground() -> None:
         workspace=config.workspace_path,
         model=config.agents.defaults.model,
         max_iterations=config.agents.defaults.max_tool_iterations,
+        memory_window=config.agents.defaults.memory_window,
         brave_api_key=config.tools.web.search.api_key or None,
         exec_config=config.tools.exec,
         cron_service=cron,
@@ -860,7 +863,9 @@ def _run_agent_foreground() -> None:
 @agent_app.callback()
 def agent_callback(
     ctx: typer.Context,
-    message: str = typer.Option(None, "--message", "-m", help="Message to send to the agent"),
+    message: str = typer.Option(
+        None, "--message", "-m", help="Message to send to the agent"
+    ),
     session_id: str = typer.Option("cli:default", "--session", "-s", help="Session ID"),
     markdown: bool = typer.Option(
         True, "--markdown/--no-markdown", help="Render assistant output as Markdown"
@@ -880,7 +885,9 @@ def agent_callback(
         _agent_interactive(message, session_id, markdown, logs)
 
 
-def _agent_interactive(message: str | None, session_id: str, markdown: bool, logs: bool) -> None:
+def _agent_interactive(
+    message: str | None, session_id: str, markdown: bool, logs: bool
+) -> None:
     """Run agent in interactive or single-message mode (original behavior)."""
     from loguru import logger
 
@@ -902,6 +909,9 @@ def _agent_interactive(message: str | None, session_id: str, markdown: bool, log
         bus=bus,
         provider=provider,
         workspace=config.workspace_path,
+        model=config.agents.defaults.model,
+        max_iterations=config.agents.defaults.max_tool_iterations,
+        memory_window=config.agents.defaults.memory_window,
         brave_api_key=config.tools.web.search.api_key or None,
         exec_config=config.tools.exec,
         restrict_to_workspace=config.tools.restrict_to_workspace,
@@ -953,7 +963,9 @@ def _agent_interactive(message: str | None, session_id: str, markdown: bool, log
                         break
 
                     with _thinking_ctx():
-                        response = await agent_loop.process_direct(user_input, session_id)
+                        response = await agent_loop.process_direct(
+                            user_input, session_id
+                        )
                     _print_agent_response(response, render_markdown=markdown)
                 except KeyboardInterrupt:
                     _restore_terminal()
@@ -992,16 +1004,13 @@ def channels_status():
     ch = config.channels
     _dim = "[dim]not configured[/dim]"
     rows = [
-        ("WhatsApp", ch.whatsapp, ch.whatsapp.bridge_url),
-        ("Discord", ch.discord, ch.discord.gateway_url),
-        ("Feishu", ch.feishu, f"app_id: {ch.feishu.app_id[:10]}..." if ch.feishu.app_id else _dim),
-        ("Mochat", ch.mochat, ch.mochat.base_url or _dim),
         (
             "Telegram",
             ch.telegram,
             f"token: {ch.telegram.token[:10]}..." if ch.telegram.token else _dim,
         ),
-        ("Slack", ch.slack, "socket" if ch.slack.app_token and ch.slack.bot_token else _dim),
+        ("Discord", ch.discord, ch.discord.gateway_url),
+        ("Email", ch.email, ch.email.imap_host or _dim),
     ]
 
     table = Table(title="Channel Status")
@@ -1011,84 +1020,6 @@ def channels_status():
     for name, cfg, detail in rows:
         table.add_row(name, "✓" if cfg.enabled else "✗", detail)
     console.print(table)
-
-
-def _get_bridge_dir() -> Path:
-    """Get the bridge directory, setting it up if needed."""
-    import shutil
-    import subprocess
-
-    # User's bridge location
-    from nanoclaw.utils.helpers import get_data_path
-
-    user_bridge = get_data_path() / "bridge"
-
-    # Check if already built
-    if (user_bridge / "dist" / "index.js").exists():
-        return user_bridge
-
-    # Check for npm
-    if not shutil.which("npm"):
-        console.print("[red]npm not found. Please install Node.js >= 18.[/red]")
-        raise typer.Exit(1)
-
-    # Find source bridge: first check package data, then source dir
-    pkg_bridge = Path(__file__).parent.parent / "bridge"  # nanoclaw/bridge (installed)
-    src_bridge = Path(__file__).parent.parent.parent / "bridge"  # repo root/bridge (dev)
-
-    source = None
-    if (pkg_bridge / "package.json").exists():
-        source = pkg_bridge
-    elif (src_bridge / "package.json").exists():
-        source = src_bridge
-
-    if not source:
-        console.print("[red]Bridge source not found.[/red]")
-        console.print("Try reinstalling: pip install --force-reinstall nanoclaw-ai")
-        raise typer.Exit(1)
-
-    console.print(f"{__logo__} Setting up bridge...")
-
-    # Copy to user directory
-    user_bridge.parent.mkdir(parents=True, exist_ok=True)
-    if user_bridge.exists():
-        shutil.rmtree(user_bridge)
-    shutil.copytree(source, user_bridge, ignore=shutil.ignore_patterns("node_modules", "dist"))
-
-    # Install and build
-    try:
-        console.print("  Installing dependencies...")
-        subprocess.run(["npm", "install"], cwd=user_bridge, check=True, capture_output=True)
-
-        console.print("  Building...")
-        subprocess.run(["npm", "run", "build"], cwd=user_bridge, check=True, capture_output=True)
-
-        console.print("[green]✓[/green] Bridge ready\n")
-    except subprocess.CalledProcessError as e:
-        console.print(f"[red]Build failed: {e}[/red]")
-        if e.stderr:
-            console.print(f"[dim]{e.stderr.decode()[:500]}[/dim]")
-        raise typer.Exit(1)
-
-    return user_bridge
-
-
-@channels_app.command("login")
-def channels_login():
-    """Link device via QR code."""
-    import subprocess
-
-    bridge_dir = _get_bridge_dir()
-
-    console.print(f"{__logo__} Starting bridge...")
-    console.print("Scan the QR code to connect.\n")
-
-    try:
-        subprocess.run(["npm", "start"], cwd=bridge_dir, check=True)
-    except subprocess.CalledProcessError as e:
-        console.print(f"[red]Bridge failed: {e}[/red]")
-    except FileNotFoundError:
-        console.print("[red]npm not found. Please install Node.js.[/red]")
 
 
 # ============================================================================
@@ -1154,12 +1085,18 @@ def cron_add(
     name: str = typer.Option(..., "--name", "-n", help="Job name"),
     message: str = typer.Option(..., "--message", "-m", help="Message for agent"),
     every: int = typer.Option(None, "--every", "-e", help="Run every N seconds"),
-    cron_expr: str = typer.Option(None, "--cron", "-c", help="Cron expression (e.g. '0 9 * * *')"),
+    cron_expr: str = typer.Option(
+        None, "--cron", "-c", help="Cron expression (e.g. '0 9 * * *')"
+    ),
     at: str = typer.Option(None, "--at", help="Run once at time (ISO format)"),
-    deliver: bool = typer.Option(False, "--deliver", "-d", help="Deliver response to channel"),
+    deliver: bool = typer.Option(
+        False, "--deliver", "-d", help="Deliver response to channel"
+    ),
     to: str = typer.Option(None, "--to", help="Recipient for delivery"),
     channel: str = typer.Option(
-        None, "--channel", help="Channel for delivery (e.g. 'telegram', 'whatsapp')"
+        None,
+        "--channel",
+        help="Channel for delivery (e.g. 'telegram', 'discord', 'email')",
     ),
 ):
     """Add a scheduled job."""
