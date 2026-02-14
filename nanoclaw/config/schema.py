@@ -189,8 +189,7 @@ class AgentDefaults(BaseModel):
     max_tokens: int = 8192
     temperature: float = 0.7
     max_tool_iterations: int = 20
-    context_window: int = 128000
-    compaction_threshold: float = 0.75
+    memory_window: int = 50
     context_window: int = 128000
     compaction_threshold: float = 0.75
 
