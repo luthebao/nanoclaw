@@ -9,8 +9,6 @@ from typing import TYPE_CHECKING
 from loguru import logger
 from telegram import (
     BotCommand,
-    InlineKeyboardButton,
-    InlineKeyboardMarkup,
     KeyboardButton,
     Message,
     ReplyKeyboardMarkup,
