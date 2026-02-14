@@ -412,7 +412,7 @@ Interactive mode exits: `exit`, `quit`, `/exit`, `/quit`, `:q`, or `Ctrl+D`.
 
 nanoclaw supports running the **gateway** as an OS background daemon. Optionally, the agent can run as a separate foreground process connected via TCP.
 
-```
+```sh
   Gateway Process                    Agent Process (optional)
 ┌─────────────────────┐         ┌─────────────────────┐
 │ ChannelManager      │         │ AgentLoop           │
@@ -471,7 +471,6 @@ nanoclaw agent serve       # Run agent as TCP server (foreground)
 
 > [!TIP]
 > You can run `nanoclaw gateway` without a separate agent process — it will use in-process mode automatically. The split-process setup is optional.
-
 > [!NOTE]
 > If you run `nanoclaw gateway install` from inside a virtualenv (e.g. via `uv run`), it will fail with an error and instructions to install globally first.
 
