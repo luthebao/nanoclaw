@@ -144,7 +144,9 @@ def version_callback(value: bool):
 
 @app.callback()
 def main(
-    version: bool = typer.Option(None, "--version", "-v", callback=version_callback, is_eager=True),
+    version: bool = typer.Option(
+        None, "--version", "-v", callback=version_callback, is_eager=True
+    ),
 ):
     """nanoclaw - Personal AI Assistant."""
     pass
@@ -257,7 +259,9 @@ def _configure_channels(config):
         key = pick
         label = next(name for k, name in channel_names if k == key)
         ch = getattr(config.channels, key)
-        enabled_str = typer.prompt(f"  {label} enabled? (y/n)", default="y" if ch.enabled else "n")
+        enabled_str = typer.prompt(
+            f"  {label} enabled? (y/n)", default="y" if ch.enabled else "n"
+        )
         ch.enabled = enabled_str.lower() in ("y", "yes", "true", "1")
         # Prompt for key credential fields based on channel type
         if hasattr(ch, "token") and key != "discord":
@@ -415,7 +419,7 @@ This file stores important information that should persist across sessions.
 """
         )
         console.print("  [dim]Created memory/MEMORY.md[/dim]")
-    
+
     history_file = memory_dir / "HISTORY.md"
     if not history_file.exists():
         history_file.write_text("")
@@ -460,7 +464,9 @@ def _make_provider(config):
 # Gateway / Server
 # ============================================================================
 
-gateway_app = typer.Typer(invoke_without_command=True, help="Manage the nanoclaw gateway service")
+gateway_app = typer.Typer(
+    invoke_without_command=True, help="Manage the nanoclaw gateway service"
+)
 app.add_typer(gateway_app, name="gateway")
 
 
@@ -510,10 +516,14 @@ def _run_gateway_foreground(port: int, verbose: bool) -> None:
     provider = None
     bus: MessageBus | NetworkBusClient
     if use_network:
-        console.print(f"[green]✓[/green] Agent daemon detected at {agent_host}:{agent_port}")
+        console.print(
+            f"[green]✓[/green] Agent daemon detected at {agent_host}:{agent_port}"
+        )
         bus = NetworkBusClient(agent_host, agent_port)
     else:
-        console.print("[yellow]Agent daemon not running, using in-process mode[/yellow]")
+        console.print(
+            "[yellow]Agent daemon not running, using in-process mode[/yellow]"
+        )
         bus = MessageBus()
         provider = _make_provider(config)
 
@@ -561,6 +571,7 @@ def _run_gateway_foreground(port: int, verbose: bool) -> None:
                     )
                 )
             return response
+
     else:
         # Network mode: dispatch through the bus
         async def on_cron_job(job: CronJob) -> str | None:
@@ -583,6 +594,7 @@ def _run_gateway_foreground(port: int, verbose: bool) -> None:
 
         async def on_heartbeat(prompt: str) -> str:
             return await agent.process_direct(prompt, session_key="heartbeat")
+
     else:
 
         async def on_heartbeat(prompt: str) -> str:
@@ -609,7 +621,9 @@ def _run_gateway_foreground(port: int, verbose: bool) -> None:
     channels = ChannelManager(config, bus, session_manager=session_manager)
 
     if channels.enabled_channels:
-        console.print(f"[green]✓[/green] Channels enabled: {', '.join(channels.enabled_channels)}")
+        console.print(
+            f"[green]✓[/green] Channels enabled: {', '.join(channels.enabled_channels)}"
+        )
     else:
         console.print("[yellow]Warning: No channels enabled[/yellow]")
 
@@ -730,7 +744,9 @@ def gateway_status():
     table.add_column("Value")
 
     table.add_row("Service", info.name)
-    table.add_row("Installed", "[green]yes[/green]" if info.installed else "[red]no[/red]")
+    table.add_row(
+        "Installed", "[green]yes[/green]" if info.installed else "[red]no[/red]"
+    )
     table.add_row("Running", "[green]yes[/green]" if info.running else "[dim]no[/dim]")
     table.add_row("PID", str(info.pid) if info.pid else "-")
     table.add_row("Service file", str(info.service_file) if info.service_file else "-")
@@ -744,7 +760,9 @@ def gateway_status():
 def gateway_logs(
     follow: bool = typer.Option(False, "--follow", "-f", help="Follow log output"),
     lines: int = typer.Option(50, "--lines", "-n", help="Number of lines to show"),
-    stderr: bool = typer.Option(False, "--stderr", "-e", help="Show stderr log instead"),
+    stderr: bool = typer.Option(
+        False, "--stderr", "-e", help="Show stderr log instead"
+    ),
 ):
     """Tail gateway log files."""
     import subprocess as sp
@@ -784,7 +802,9 @@ def _get_daemon_manager():
 # Agent Commands
 # ============================================================================
 
-agent_app = typer.Typer(invoke_without_command=True, help="Manage the nanoclaw agent service")
+agent_app = typer.Typer(
+    invoke_without_command=True, help="Manage the nanoclaw agent service"
+)
 app.add_typer(agent_app, name="agent")
 
 
@@ -843,7 +863,9 @@ def _run_agent_foreground() -> None:
 @agent_app.callback()
 def agent_callback(
     ctx: typer.Context,
-    message: str = typer.Option(None, "--message", "-m", help="Message to send to the agent"),
+    message: str = typer.Option(
+        None, "--message", "-m", help="Message to send to the agent"
+    ),
     session_id: str = typer.Option("cli:default", "--session", "-s", help="Session ID"),
     markdown: bool = typer.Option(
         True, "--markdown/--no-markdown", help="Render assistant output as Markdown"
@@ -863,7 +885,9 @@ def agent_callback(
         _agent_interactive(message, session_id, markdown, logs)
 
 
-def _agent_interactive(message: str | None, session_id: str, markdown: bool, logs: bool) -> None:
+def _agent_interactive(
+    message: str | None, session_id: str, markdown: bool, logs: bool
+) -> None:
     """Run agent in interactive or single-message mode (original behavior)."""
     from loguru import logger
 
@@ -939,7 +963,9 @@ def _agent_interactive(message: str | None, session_id: str, markdown: bool, log
                         break
 
                     with _thinking_ctx():
-                        response = await agent_loop.process_direct(user_input, session_id)
+                        response = await agent_loop.process_direct(
+                            user_input, session_id
+                        )
                     _print_agent_response(response, render_markdown=markdown)
                 except KeyboardInterrupt:
                     _restore_terminal()
@@ -978,7 +1004,11 @@ def channels_status():
     ch = config.channels
     _dim = "[dim]not configured[/dim]"
     rows = [
-        ("Telegram", ch.telegram, f"token: {ch.telegram.token[:10]}..." if ch.telegram.token else _dim),
+        (
+            "Telegram",
+            ch.telegram,
+            f"token: {ch.telegram.token[:10]}..." if ch.telegram.token else _dim,
+        ),
         ("Discord", ch.discord, ch.discord.gateway_url),
         ("Email", ch.email, ch.email.imap_host or _dim),
     ]
@@ -990,9 +1020,6 @@ def channels_status():
     for name, cfg, detail in rows:
         table.add_row(name, "✓" if cfg.enabled else "✗", detail)
     console.print(table)
-
-
-
 
 
 # ============================================================================
@@ -1058,12 +1085,18 @@ def cron_add(
     name: str = typer.Option(..., "--name", "-n", help="Job name"),
     message: str = typer.Option(..., "--message", "-m", help="Message for agent"),
     every: int = typer.Option(None, "--every", "-e", help="Run every N seconds"),
-    cron_expr: str = typer.Option(None, "--cron", "-c", help="Cron expression (e.g. '0 9 * * *')"),
+    cron_expr: str = typer.Option(
+        None, "--cron", "-c", help="Cron expression (e.g. '0 9 * * *')"
+    ),
     at: str = typer.Option(None, "--at", help="Run once at time (ISO format)"),
-    deliver: bool = typer.Option(False, "--deliver", "-d", help="Deliver response to channel"),
+    deliver: bool = typer.Option(
+        False, "--deliver", "-d", help="Deliver response to channel"
+    ),
     to: str = typer.Option(None, "--to", help="Recipient for delivery"),
     channel: str = typer.Option(
-        None, "--channel", help="Channel for delivery (e.g. 'telegram', 'discord', 'email')"
+        None,
+        "--channel",
+        help="Channel for delivery (e.g. 'telegram', 'discord', 'email')",
     ),
 ):
     """Add a scheduled job."""
