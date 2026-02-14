@@ -12,6 +12,7 @@ from telegram import (
     KeyboardButton,
     Message,
     ReplyKeyboardMarkup,
+    ReplyKeyboardRemove,
     Update,
 )
 from telegram.ext import (
@@ -383,7 +384,11 @@ class TelegramChannel(BaseChannel):
 
         for i, chunk in enumerate(md_chunks):
             is_last = i == len(md_chunks) - 1
-            markup = keyboard if is_last else None
+            # On the last chunk: show keyboard if buttons detected, otherwise remove any existing keyboard
+            if is_last:
+                markup = keyboard if keyboard else ReplyKeyboardRemove()
+            else:
+                markup = None
             try:
                 html_content = _markdown_to_telegram_html(chunk)
                 await self._app.bot.send_message(
