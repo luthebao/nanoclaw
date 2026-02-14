@@ -515,7 +515,7 @@ class TelegramChannel(BaseChannel):
             return
 
         help_text = (
-            "🐈 <b>nanoclaw commands</b>\n\n"
+            "🦉 <b>nanoclaw commands</b>\n\n"
             "/start — Start the bot\n"
             "/reset — Reset conversation history\n"
             "/help — Show this help message\n\n"

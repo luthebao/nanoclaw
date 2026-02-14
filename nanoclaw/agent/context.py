@@ -84,7 +84,7 @@ Skills with available="false" need dependencies installed first - you can try in
         system = platform.system()
         runtime = f"{'macOS' if system == 'Darwin' else system} {platform.machine()}, Python {platform.python_version()}"
 
-        return f"""# nanoclaw 🐈
+        return f"""# nanoclaw 🦉
 
 You are nanoclaw, a helpful AI assistant. You have access to tools that allow you to:
 - Read, write, and edit files
