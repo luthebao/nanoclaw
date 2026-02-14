@@ -54,9 +54,6 @@ class EmailConfig(BaseModel):
     auto_reply_enabled: bool = (
         True  # If false, inbound email is read but no automatic reply is sent
     )
-    auto_reply_enabled: bool = (
-        True  # If false, inbound email is read but no automatic reply is sent
-    )
     poll_interval_seconds: int = 30
     mark_seen: bool = True
     max_body_chars: int = 12000

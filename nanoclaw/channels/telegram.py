@@ -481,17 +481,21 @@ class TelegramChannel(BaseChannel):
         )
 
     async def _on_allow(self, update: Update, context: ContextTypes.DEFAULT_TYPE) -> None:
-        """Handle /allow command — add user ID to allow_from list."""
+        """Handle /allow command — add user ID to allow_from list (only when list is empty)."""
         if not update.message or not update.effective_user:
+            return
+
+        # Only allow /allow command when allow_from is empty (bootstrapping mode)
+        allow_list = self.config.allow_from
+        if allow_list:
+            await update.message.reply_text(
+                "🦉 The /allow command is disabled.\n"
+                "Access is controlled by the administrator."
+            )
             return
 
         user = update.effective_user
         user_id = str(user.id)
-
-        # Check if already allowed
-        if self.is_allowed(user_id, str(update.message.chat_id)):
-            await update.message.reply_text(f"🦉 You are already allowed (ID: `{user_id}`)")
-            return
 
         # Add user ID to config
         from nanoclaw.config.loader import load_config, save_config
@@ -554,15 +558,18 @@ class TelegramChannel(BaseChannel):
         if user.username:
             sender_id = f"{sender_id}|{user.username}"
 
-        # In groups: require @mention AND chat_id in allow_from
+        # In groups: require @mention AND group_id in allow_from
         if message.chat.type != "private":
             if not self._is_mentioned(message):
                 return
-            if not self.is_allowed(sender_id, str(chat_id)):
+            # Groups must be explicitly in allow_from (empty list = no groups allowed)
+            allow_list = self.config.allow_from
+            if not allow_list or str(chat_id) not in allow_list:
                 logger.debug(f"Group {chat_id} not in allow_from, ignoring")
                 return
         else:
             # Private chats: check sender is allowed before any processing
+            # Empty allow_from = allow everyone (bootstrapping mode)
             if not self.is_allowed(sender_id, str(chat_id)):
                 logger.debug(f"Sender {sender_id} not in allow_from, ignoring DM")
                 return
