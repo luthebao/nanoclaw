@@ -238,13 +238,7 @@ def _configure_channels(config):
     channel_names = [
         ("telegram", "Telegram"),
         ("discord", "Discord"),
-        ("slack", "Slack"),
-        ("whatsapp", "WhatsApp"),
-        ("feishu", "Feishu"),
-        ("dingtalk", "DingTalk"),
         ("email", "Email"),
-        ("mochat", "Mochat"),
-        ("qq", "QQ"),
     ]
     while True:
         choices = []
@@ -270,24 +264,6 @@ def _configure_channels(config):
             ch.token = typer.prompt(f"  {label} token", default=ch.token or "")
         if hasattr(ch, "token") and key == "discord":
             ch.token = typer.prompt(f"  {label} bot token", default=ch.token or "")
-        if hasattr(ch, "bot_token") and key == "slack":
-            ch.bot_token = typer.prompt(
-                f"  {label} bot token (xoxb-...)", default=ch.bot_token or ""
-            )
-            ch.app_token = typer.prompt(
-                f"  {label} app token (xapp-...)", default=ch.app_token or ""
-            )
-        if hasattr(ch, "app_id") and key == "feishu":
-            ch.app_id = typer.prompt(f"  {label} app_id", default=ch.app_id or "")
-            ch.app_secret = typer.prompt(f"  {label} app_secret", default=ch.app_secret or "")
-        if hasattr(ch, "client_id") and key == "dingtalk":
-            ch.client_id = typer.prompt(f"  {label} client_id", default=ch.client_id or "")
-            ch.client_secret = typer.prompt(
-                f"  {label} client_secret", default=ch.client_secret or ""
-            )
-        if hasattr(ch, "app_id") and key == "qq":
-            ch.app_id = typer.prompt(f"  {label} app_id", default=ch.app_id or "")
-            ch.secret = typer.prompt(f"  {label} secret", default=ch.secret or "")
         console.print(f"  [green]✓[/green] {label} configured")
         console.print()
 
@@ -1002,16 +978,9 @@ def channels_status():
     ch = config.channels
     _dim = "[dim]not configured[/dim]"
     rows = [
-        ("WhatsApp", ch.whatsapp, ch.whatsapp.bridge_url),
+        ("Telegram", ch.telegram, f"token: {ch.telegram.token[:10]}..." if ch.telegram.token else _dim),
         ("Discord", ch.discord, ch.discord.gateway_url),
-        ("Feishu", ch.feishu, f"app_id: {ch.feishu.app_id[:10]}..." if ch.feishu.app_id else _dim),
-        ("Mochat", ch.mochat, ch.mochat.base_url or _dim),
-        (
-            "Telegram",
-            ch.telegram,
-            f"token: {ch.telegram.token[:10]}..." if ch.telegram.token else _dim,
-        ),
-        ("Slack", ch.slack, "socket" if ch.slack.app_token and ch.slack.bot_token else _dim),
+        ("Email", ch.email, ch.email.imap_host or _dim),
     ]
 
     table = Table(title="Channel Status")
@@ -1169,7 +1138,7 @@ def cron_add(
     deliver: bool = typer.Option(False, "--deliver", "-d", help="Deliver response to channel"),
     to: str = typer.Option(None, "--to", help="Recipient for delivery"),
     channel: str = typer.Option(
-        None, "--channel", help="Channel for delivery (e.g. 'telegram', 'whatsapp')"
+        None, "--channel", help="Channel for delivery (e.g. 'telegram', 'discord', 'email')"
     ),
 ):
     """Add a scheduled job."""

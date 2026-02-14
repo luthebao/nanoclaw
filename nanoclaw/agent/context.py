@@ -157,7 +157,7 @@ To recall past events, grep {workspace_path}/memory/HISTORY.md"""
             current_message: The new user message.
             skill_names: Optional skills to include.
             media: Optional list of local file paths for images/media.
-            channel: Current channel (telegram, feishu, etc.).
+            channel: Current channel (telegram, discord, email, etc.).
             chat_id: Current chat/user ID.
 
         Returns:
